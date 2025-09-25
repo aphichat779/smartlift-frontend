@@ -1,14 +1,10 @@
-// src/services/liftApi.js
+import { apiService } from './api';
 
-const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost';
-
+// ฟังก์ชันสำหรับดึงสถานะลิฟต์จาก API
 export const fetchElevatorStatus = async (liftId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/endpoints/get_status_db.php?lift_id=${liftId}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    const data = await response.json();
+    // ใช้ request() ของ apiService โดยระบุ endpoint ที่ถูกต้อง
+    const data = await apiService.request(`/endpoints/get_status_db.php?lift_id=${liftId}`);
     return data;
   } catch (error) {
     console.error(`Failed to fetch status for lift ${liftId}:`, error);
@@ -19,11 +15,7 @@ export const fetchElevatorStatus = async (liftId) => {
 // ฟังก์ชันสำหรับดึงคำสั่งเรียกจาก API
 export const fetchPendingCalls = async (liftId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/endpoints/get_call.php?lift_id=${liftId}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    const data = await response.json();
+    const data = await apiService.request(`/endpoints/get_call.php?lift_id=${liftId}`);
     return data.cmd;
   } catch (error) {
     console.error(`Error fetching pending calls for lift ${liftId}:`, error);
@@ -35,11 +27,7 @@ export const fetchPendingCalls = async (liftId) => {
 export const sendElevatorCommand = async (liftId, params) => {
   try {
     const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${API_BASE_URL}/api/endpoints/set_status_db.php?lift_id=${liftId}&${query}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    const data = await response.json();
+    const data = await apiService.request(`/endpoints/set_status_db.php?lift_id=${liftId}&${query}`);
     console.log(`Command for lift ${liftId} sent successfully:`, data);
   } catch (error) {
     console.error(`Error sending command for lift ${liftId}:`, error);
