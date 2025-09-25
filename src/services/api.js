@@ -3,7 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost
 
 class ApiService {
   constructor() {
-    this.baseURL = `${API_BASE_URL}/smartlift2`;
+    this.baseURL = API_BASE_URL;
   }
 
   async request(endpoint, options = {}) {
