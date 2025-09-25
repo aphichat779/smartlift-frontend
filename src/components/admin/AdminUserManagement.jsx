@@ -1,0 +1,396 @@
+import React, { useState, useEffect } from 'react';
+import { apiService } from '../../services/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Loader2,
+  Users,
+  Shield,
+  ShieldOff,
+  Search,
+  RotateCcw,
+  AlertTriangle,
+  CheckCircle,
+  User,
+  Mail,
+  Phone,
+} from 'lucide-react';
+
+// ฟังก์ชันสำหรับจัดการ URL รูปโปรไฟล์
+const getProfileImageSrc = (imgUrl) => {
+  if (imgUrl) {
+    return `${import.meta.env.VITE_REACT_APP_API_URL}${imgUrl}`;
+  }
+  return 'https://via.placeholder.com/150';
+};
+
+// คอมโพเนนต์สำหรับแสดงผู้ใช้ในรูปแบบ Card (สำหรับมือถือ)
+const UserCard = ({ user, onReset2FA }) => (
+  <Card className="p-4">
+    <div className="flex items-center space-x-3">
+      {user.user_img ? (
+        <img
+          src={getProfileImageSrc(user.user_img)}
+          alt="User Profile"
+          className="h-14 w-14 rounded-full object-cover"
+        />
+      ) : (
+        <div className="h-10 w-10 flex items-center justify-center bg-gray-100 rounded-full">
+          <User className="h-5 w-5" />
+        </div>
+      )}
+      <div className="flex-1">
+        <p className="font-medium">
+          {user.first_name} {user.last_name}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          @{user.username}
+        </p>
+        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+          {user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้'}
+        </Badge>
+      </div>
+    </div>
+
+    <div className="space-y-2 text-sm text-gray-600">
+      <div className="flex items-center space-x-2">
+        <Mail className="h-4 w-4" />
+        <span>{user.email}</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <Phone className="h-4 w-4" />
+        <span>{user.phone}</span>
+      </div>
+    </div>
+
+    <div className="flex justify-between items-center">
+      <div className="flex items-center space-x-2">
+        {user.ga_enabled ? (
+          <Badge className="bg-green-500">2FA เปิด</Badge>
+        ) : (
+          <Badge variant="secondary">2FA ปิด</Badge>
+        )}
+        {user.locked_until && new Date(user.locked_until) > new Date() ? (
+          <Badge variant="destructive">ถูกล็อค</Badge>
+        ) : null}
+      </div>
+
+      {user.ga_enabled && (
+        <Button size="sm" variant="outline" onClick={() => onReset2FA(user)}>
+          <RotateCcw className="h-3 w-3 mr-1" />
+          รีเซ็ต 2FA
+        </Button>
+      )}
+    </div>
+  </Card>
+);
+
+const AdminUserManagement = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetReason, setResetReason] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    fetchUsers();
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getUsers();
+      setUsers(response.data);
+    } catch (error) {
+      setError('เกิดข้อผิดพลาดในการโหลดข้อมูลผู้ใช้');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset2FA = async () => {
+    if (!selectedUser || !resetReason.trim()) {
+      setError('กรุณาระบุเหตุผลในการรีเซ็ต 2FA');
+      return;
+    }
+
+    setResetLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiService.adminReset2FA(selectedUser.id, resetReason);
+      setSuccess(`รีเซ็ต 2FA สำหรับผู้ใช้ ${selectedUser.username} สำเร็จ`);
+      setResetDialogOpen(false);
+      setResetReason('');
+      setSelectedUser(null);
+      fetchUsers(); // Refresh user list
+    } catch (error) {
+      setError(error.message || 'เกิดข้อผิดพลาดในการรีเซ็ต 2FA');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const filteredUsers = users.filter(user =>
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const openResetDialog = (user) => {
+    setSelectedUser(user);
+    setResetDialogOpen(true);
+  };
+
+  return (
+    <div className="w-full h-full md:p-6">
+      <div className="max-w-7xl mx-auto">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Users className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">จัดการผู้ใช้</CardTitle>
+                  <CardDescription>
+                    จัดการบัญชีผู้ใช้และการตั้งค่าความปลอดภัย
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className="text-sm">
+                ผู้ใช้ทั้งหมด: {users.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-700">
+                  {success}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="relative">
+              <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                placeholder="ค้นหาผู้ใช้..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 max-w-none md:max-w-sm"
+              />
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">กำลังโหลดข้อมูล...</span>
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchTerm ? 'ไม่พบผู้ใช้ที่ค้นหา' : 'ไม่มีข้อมูลผู้ใช้'}
+              </div>
+            ) : isMobile ? (
+              <div className="space-y-4">
+                {filteredUsers.map((user) => (
+                  <UserCard key={user.id} user={user} onReset2FA={openResetDialog} />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ผู้ใช้</TableHead>
+                      <TableHead>ข้อมูลติดต่อ</TableHead>
+                      <TableHead>บทบาท</TableHead>
+                      <TableHead>2FA</TableHead>
+                      <TableHead>สถานะ</TableHead>
+                      <TableHead>การจัดการ</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            {user.user_img ? (
+                              <img
+                                src={getProfileImageSrc(user.user_img)}
+                                alt="User Profile"
+                                className="h-10 w-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-10 w-10 flex items-center justify-center bg-gray-100 rounded-full">
+                                <User className="h-5 w-5" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-medium">
+                                {user.first_name} {user.last_name}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                @{user.username}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex items-center space-x-1">
+                              <Mail className="h-3 w-3" />
+                              <span>{user.email}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Phone className="h-3 w-3" />
+                              <span>{user.phone}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                            {user.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            {user.ga_enabled ? (
+                              <Shield className="h-4 w-4 text-green-600" />
+                            ) : (
+                              <ShieldOff className="h-4 w-4 text-gray-400" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {user.locked_until && new Date(user.locked_until) > new Date() ? (
+                            <Badge variant="destructive">ถูกล็อค</Badge>
+                          ) : (
+                            <Badge variant="default" className="bg-green-500 hover:bg-green-500">
+                              ใช้งานได้
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            {user.ga_enabled && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openResetDialog(user)}
+                              >
+                                <RotateCcw className="h-3 w-3 mr-1" />
+                                รีเซ็ต 2FA
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Dialog for Reset 2FA */}
+      {selectedUser && (
+        <Dialog
+          open={resetDialogOpen}
+          onOpenChange={(open) => {
+            setResetDialogOpen(open);
+            if (!open) {
+              setSelectedUser(null);
+              setResetReason('');
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>รีเซ็ต 2FA</DialogTitle>
+              <DialogDescription>
+                คุณกำลังจะรีเซ็ต 2FA สำหรับผู้ใช้: {selectedUser.username}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  การรีเซ็ต 2FA จะทำให้ผู้ใช้ต้องตั้งค่า 2FA ใหม่ทั้งหมด
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                <Label htmlFor="resetReason">เหตุผลในการรีเซ็ต *</Label>
+                <Input
+                  id="resetReason"
+                  value={resetReason}
+                  onChange={(e) => setResetReason(e.target.value)}
+                  placeholder="เช่น: ผู้ใช้ทำอุปกรณ์หาย"
+                  required
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setResetDialogOpen(false);
+                    setSelectedUser(null);
+                    setResetReason('');
+                  }}
+                  disabled={resetLoading}
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleReset2FA}
+                  disabled={resetLoading || !resetReason.trim()}
+                >
+                  {resetLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      กำลังรีเซ็ต...
+                    </>
+                  ) : (
+                    'ยืนยันการรีเซ็ต'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+};
+
+export default AdminUserManagement;

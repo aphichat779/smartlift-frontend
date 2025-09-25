@@ -1,0 +1,56 @@
+ตัวอย่าง lift_state ที่จำลองขึ้นมาเพื่อทดสอบแต่ละสถานะ:
+
+powerOn (ระบบทำงาน)
+
+lift_state = "100000000000"
+
+doorOpen (สัญญาณเตือน)
+
+lift_state = "010000000000"
+
+overload (น้ำหนักเกิน)
+
+lift_state = "001000000000"
+
+moving (กำลังเคลื่อนที่)
+
+lift_state = "000100000000"
+
+emergency (โหมดฉุกเฉิน)
+
+lift_state = "000010000000"
+
+maintenance (โหมดบำรุงรักษา)
+
+lift_state = "000001000000"
+
+fault (ขัดข้อง)
+
+lift_state = "000000100000"
+
+fire (โหมดไฟไหม้)
+
+lift_state = "000000010000"
+
+outOfService (งดให้บริการ)
+
+lift_state = "000000001000"
+
+atFloor (จอดที่ชั้น)
+
+lift_state = "000000000100"
+
+alarm (สัญญาณเตือน)
+
+lift_state = "000000000010"
+
+unknown (ไม่ทราบสถานะ)
+
+lift_state = "000000000001"
+
+<div className="flex flex-wrap items-center gap-2 mb-4">
+                <Badge active={!state.outOfService && !state.fault} type="success">พร้อมให้บริการ</Badge>
+                <Badge active={state.moving}>กำลังเคลื่อนที่</Badge>
+                <Badge active={state.maintenance}>บำรุงรักษา</Badge>
+                <Badge active={state.fault} type="danger">ขัดข้อง</Badge>
+              </div>

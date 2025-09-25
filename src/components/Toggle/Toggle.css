@@ -1,0 +1,171 @@
+/* src/components/Toggle.css */
+
+.theme-toggle-container {
+  position: absolute;
+  top: 1em;
+  right: 1em;
+  z-index: 8888;
+  user-select: none;
+}
+
+.theme-toggle-container.navbar-toggle {
+  position: static;
+  /* ปล่อยให้ parent จัดตำแหน่ง */
+  top: auto;
+  right: auto;
+  margin-left: auto;
+  /* ดันไปขวาสุด ถ้าต้องการ */
+  z-index: auto;
+}
+
+/* ซ่อน input checkbox จริงๆ */
+.theme-toggle-checkbox {
+  visibility: hidden;
+  position: absolute;
+}
+
+/* ส่วนของปุ่มหลัก (label) ที่มองเห็นได้ */
+.theme-toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4em;
+  /* ลดขนาดให้เล็ก */
+  height: 1.6em;
+  /* ลดความสูงให้เล็ก */
+  border-radius: 0.75em;
+  /* ปรับ border-radius ให้เข้ากับขนาดใหม่ */
+  cursor: pointer;
+  padding: 0.1em 0.2em;
+  /* ลด padding */
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  /* ลดเงา */
+  transition: all 0.4s ease;
+  /* สีเริ่มต้นสำหรับ Day Mode */
+  background-color: #E8E8E8;
+  color: #2C2C2C;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  /* ลดขนาดขอบ */
+}
+
+/* พื้นหลังของปุ่มเมื่อเป็น Night Mode */
+.theme-toggle-checkbox:checked + .theme-toggle-label {
+  background-color: #1A1A1A;
+  color: #F0F0F0;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* สไตล์สำหรับข้อความ DAY / NIGHT */
+.mode-text {
+  font-weight: 600;
+  font-size: 0.45em;
+  /* ลดขนาดฟอนต์ให้เล็ก */
+  letter-spacing: 0.3px;
+  /* ลดระยะห่างตัวอักษร */
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  position: absolute;
+  top: 50%;
+  left: 49%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.day-mode-text {
+  opacity: 1;
+}
+
+.night-mode-text {
+  opacity: 0;
+}
+
+/* สไตล์สำหรับไอคอนพระอาทิตย์ / พระจันทร์ */
+.mode-icon {
+  font-size: 0.8em;
+  /* ลดขนาดไอคอนให้เล็ก */
+  transition: all 0.3s ease;
+  position: absolute;
+  top: 45%;
+  z-index: 2;
+}
+
+.sun-icon {
+  right: 0.5em;
+  /* ปรับตำแหน่งให้เหมาะสม */
+  transform: translateY(-45%);
+  opacity: 1;
+}
+
+.moon-icon {
+  left: 0.5em;
+  /* ปรับตำแหน่งให้สมมาตร */
+  transform: translateY(-50%);
+  opacity: 0;
+}
+
+/* สวิตช์ (วงกลมที่เลื่อนได้) */
+.theme-toggle-label::before {
+  content: "";
+  height: 1em;
+  /* เพิ่มขนาดวงกลมให้สมส่วน */
+  width: 1em;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 100%);
+  /* เพิ่ม gradient ให้สวย */
+  position: absolute;
+  top: 50%;
+  left: 0.3em;
+  transform: translateY(-50%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* เพิ่มเงาให้มีมิติ */
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  /* ใช้ easing ที่นุ่มนวล */
+  z-index: 3;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* เมื่อ checkbox ถูกเลือก (Night Mode): เลื่อนวงกลมไปทางขวา */
+.theme-toggle-checkbox:checked + .theme-toggle-label::before {
+  left: calc(100% - 1.2em);
+  /* ปรับตำแหน่งให้เหมาะกับขนาดใหม่ */
+  background: linear-gradient(135deg, #4A4A4A 0%, #2D2D2D 100%);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Animation สำหรับ Day Mode -> Night Mode */
+.theme-toggle-checkbox:checked + .theme-toggle-label .day-mode-text {
+  opacity: 0;
+}
+
+.theme-toggle-checkbox:checked + .theme-toggle-label .night-mode-text {
+  opacity: 1;
+}
+
+.theme-toggle-checkbox:checked + .theme-toggle-label .sun-icon {
+  opacity: 0;
+}
+
+.theme-toggle-checkbox:checked + .theme-toggle-label .moon-icon {
+  opacity: 1;
+}
+
+/* เพิ่ม hover effect */
+.theme-toggle-label:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  /* เพิ่มเงา hover */
+  transform: translateY(-2px) scale(1.02);
+  /* เพิ่ม scale effect */
+}
+
+.theme-toggle-label:active {
+  transform: translateY(0) scale(0.98);
+  /* เพิ่ม scale effect เมื่อกด */
+}
+
+/* เพิ่ม focus styles สำหรับ accessibility */
+.theme-toggle-checkbox:focus + .theme-toggle-label {
+  outline: 2px solid #4A90E2;
+  outline-offset: 2px;
+}
