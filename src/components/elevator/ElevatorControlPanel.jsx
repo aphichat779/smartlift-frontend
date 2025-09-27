@@ -5,7 +5,7 @@ import { Wifi, WifiOff } from "lucide-react";
 import {
   getFloorIndices, getFloorLabel, getStatusBg, getStatusColor,
   translateStatus, LIFT_STATE_BITS
-} from "@/utils/elevator";
+} from "@/utils/liftUtils";
 
 export default function ElevatorControlPanel({
   st,
@@ -50,6 +50,7 @@ export default function ElevatorControlPanel({
             className="grid gap-1"
             style={{ gridTemplateColumns: "repeat(auto-fill, minmax(44px, 1fr))" }}
           >
+            
             {hasFloors ? (
               floorIndices.map((idx) => {
                 const lbl = getFloorLabel(st, idx);
@@ -91,23 +92,7 @@ export default function ElevatorControlPanel({
         </div>
 
         {/* Status row */}
-        <div className="flex items-center justify-center gap-6">
-          <div className="flex items-center gap-2">
-            {isOnline ? (
-              <Wifi className={`w-4 h-4 ${onlineBadgeClass}`} />
-            ) : (
-              <WifiOff className={`w-4 h-4 ${onlineBadgeClass}`} />
-            )}
-            <span className={`text-xs ${getStatusColor(st?.connection)}`}>
-              {translateStatus(st?.connection)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`px-2 py-1 rounded text-xs ${getStatusBg(st?.mode)} ${getStatusColor(st?.mode)}`}>
-              {translateStatus(st?.mode)}
-            </span>
-          </div>
-        </div>
+        
 
         {/* Quick actions (optional) */}
         {(onDoor || onMode) && (
@@ -136,25 +121,6 @@ export default function ElevatorControlPanel({
             )}
           </div>
         )}
-
-        {/* Flags */}
-        <div className="flex flex-wrap gap-2 pt-2">
-          {Object.entries(st?.flags || {})
-            .filter(([_, v]) => v)
-            .map(([k]) => {
-              const def = (LIFT_STATE_BITS || []).find((b) => b.key === k);
-              const label = def?.label || k;
-              return (
-                <span
-                  key={k}
-                  className="px-2 py-1 rounded-full text-xs border bg-gray-100 border-gray-300 text-gray-700"
-                  title={label}
-                >
-                  {label}
-                </span>
-              );
-            })}
-        </div>
       </div>
     </div>
   );

@@ -47,6 +47,16 @@ class ApiService {
     }
   }
 
+  async getDashboard(section) {
+    const ep = section
+      ? `/api/dashboard/dashboard.php?section=${encodeURIComponent(section)}`
+      : `/api/dashboard/dashboard.php`;
+    return this.request(ep, { method: 'GET' });
+  }
+
+  // ==========================
+  // Auth & Profile
+  // ==========================
   async register(userData) {
     return this.request('/api/auth/register', {
       method: 'POST',
@@ -61,10 +71,31 @@ class ApiService {
     });
   }
 
-  async setup2FA() {
-    return this.request('/api/2fa/setup', {
-      method: 'POST',
+  async getProfile() {
+    return this.request('/api/user/profile');
+  }
+
+  async updateProfile(profileData) {
+    return this.request('/api/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
     });
+  }
+
+  async uploadProfileImage(imageFile) {
+    const formData = new FormData();
+    formData.append('profile_image', imageFile);
+    return this.request('/api/user/profile', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  // ==========================
+  // 2FA
+  // ==========================
+  async setup2FA() {
+    return this.request('/api/2fa/setup', { method: 'POST' });
   }
 
   async verifySetup2FA(totpCode) {
@@ -102,6 +133,9 @@ class ApiService {
     });
   }
 
+  // ==========================
+  // Organizations
+  // ==========================
   async getOrganizations() {
     return this.request('/api/elevator/organizations');
   }
@@ -130,8 +164,13 @@ class ApiService {
     });
   }
 
+  // ==========================
+  // Buildings
+  // ==========================
   async getBuildings(org_id = null) {
-    const endpoint = org_id ? `/api/elevator/buildings?org_id=${org_id}` : '/api/elevator/buildings';
+    const endpoint = org_id
+      ? `/api/elevator/buildings?org_id=${org_id}`
+      : '/api/elevator/buildings';
     return this.request(endpoint);
   }
 
@@ -159,49 +198,15 @@ class ApiService {
     });
   }
 
-  async getProfile() {
-    return this.request('/api/user/profile');
-  }
-
-  async updateProfile(profileData) {
-    return this.request('/api/user/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData),
-    });
-  }
-
-  async uploadProfileImage(imageFile) {
-    const formData = new FormData();
-    formData.append('profile_image', imageFile);
-    return this.request('/api/user/profile', {
-      method: 'POST',
-      body: formData,
-    });
-  }
-
-  async getUsers(page = 1, limit = 20) {
-    return this.request(`/api/admin/users?page=${page}&limit=${limit}`);
-  }
-
-  async adminReset2FA(userId, reason) {
-    return this.request('/api/admin/reset-2fa', {
-      method: 'POST',
-      body: JSON.stringify({ user_id: userId, reason }),
-    });
-  }
-
+  // ==========================
+  // Elevators
+  // ==========================
   async getElevators(org_id = null, building_id = null) {
     let endpoint = '/api/elevator/lifts';
     const params = new URLSearchParams();
-    if (org_id) {
-      params.append('org_id', org_id);
-    }
-    if (building_id) {
-      params.append('building_id', building_id);
-    }
-    if (params.toString()) {
-      endpoint += `?${params.toString()}`;
-    }
+    if (org_id) params.append('org_id', org_id);
+    if (building_id) params.append('building_id', building_id);
+    if (params.toString()) endpoint += `?${params.toString()}`;
     return this.request(endpoint);
   }
 
@@ -225,12 +230,12 @@ class ApiService {
     });
   }
 
-  // Reports API 
+  // ==========================
+  // Reports
+  // ==========================
   async getReports(org_id = null) {
     let endpoint = '/api/work/reports.php';
-    if (org_id) {
-      endpoint += `?org_id=${org_id}`;
-    }
+    if (org_id) endpoint += `?org_id=${org_id}`;
     return this.request(endpoint);
   }
 
@@ -255,6 +260,71 @@ class ApiService {
   async deleteReport(id) {
     return this.request(`/api/work/reports.php?id=${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  // ==========================
+  // Admin Users
+  // ==========================
+  async getUsers(page = 1, limit = 20) {
+    return this.request(`/api/admin/users?page=${page}&limit=${limit}`);
+  }
+
+  async adminUpdateUser(userId, updates = {}) {
+    if (!userId || typeof userId !== 'number') {
+      throw new Error('userId ไม่ถูกต้อง');
+    }
+    const tasks = [];
+
+    if (typeof updates.role === 'string') {
+      tasks.push(
+        this.request('/api/admin/users.php', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_id: userId,
+            action: 'update_role',
+            role: updates.role,
+          }),
+        })
+      );
+    }
+
+    if (typeof updates.org_id === 'number') {
+      tasks.push(
+        this.request('/api/admin/users.php', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_id: userId,
+            action: 'update_user_org',
+            org_id: updates.org_id,
+          }),
+        })
+      );
+    }
+
+    if (tasks.length === 0) {
+      return { success: true, message: 'ไม่มีสิ่งที่ต้องอัปเดต' };
+    }
+
+    const results = await Promise.all(tasks);
+    return { success: true, results };
+  }
+
+  async adminToggleUserStatus(userId, isActive) {
+    return this.request('/api/admin/users.php', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: userId,
+        action: 'toggle_status',
+        is_active: isActive ? 1 : 0,
+      }),
+    });
+  }
+
+  async adminReset2FA(userId, reason) {
+    return this.request('/api/admin/reset-2fa', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, reason }),
     });
   }
 }

@@ -1,3 +1,4 @@
+// src/components/pages/ElevatorDetail.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";

@@ -1,23 +1,28 @@
-// src/pages/MonitorOverview.jsx
+// src/components/pages/MonitorOverview.jsx
+
 import React from "react";
 import { Monitor as MonitorIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useElevators } from "../../contexts/ElevatorContext";
 import ElevatorShaft from "../elevator/ElevatorShaft";
 import ElevatorControlPanel from "../elevator/ElevatorControlPanel";
-import { getStatusBg, getStatusColor } from "../../utils/elevator";
+import { getStatusBg, getStatusColor } from "../../utils/liftUtils";
 
 export default function MonitorOverview() {
-  const { elevatorStates, filteredLiftIds } = useElevators();
+  // ดึงฟังก์ชันสำหรับส่งคำสั่งจาก Context
+  const { elevatorStates, filteredLiftIds, handleFloorSelect } = useElevators();
 
-  // no-op handlers เผื่อยังไม่ได้ต่อ backend/action
-  const onSelectFloor = (_id, _idx) => { };
-  const onSend = (_id) => { };
-  const onDoor = (_id) => { };
-  const onMode = (_id) => { };
+  // ตรวจสอบว่ามีข้อมูลหรือไม่
+  if (!elevatorStates) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6">
+        <div className="max-w-7xl mx-auto">กำลังเตรียมข้อมูล...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-800 p-">
+    <div className="min-h-screen bg-gray-100 text-gray-800 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -62,17 +67,19 @@ export default function MonitorOverview() {
 
                 {/* Info row */}
                 <div className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm mb-4">
-                  <div className="flex items-center ">
+                  <div className="flex items-center">
                     <span className="text-gray-600"></span>
-                    <span className="font-medium">{st.org_name} {st.building_name}</span>
+                    <span className="font-medium">
+                      {st.org_name} {st.building_name}
+                    </span>
                   </div>
-                  <div className="flex items-center ">
+                  <div className="flex items-center">
                     <span className="text-gray-600">โหมด:</span>
                     <span className="font-medium">
                       {st.mode === "AUTO" ? "อัตโนมัติ" : "แมนนวล"}
                     </span>
                   </div>
-                  <div className="flex items-center ">
+                  <div className="flex items-center">
                     <span className="text-gray-600">ประตู:</span>
                     <span className="font-medium">
                       {st.door === "OPEN" ? "เปิด" : "ปิด"}
@@ -82,15 +89,7 @@ export default function MonitorOverview() {
 
                 {/* Main layout: shaft (fixed) | control (fluid) */}
                 <div className="flex flex-row gap-4 items-start overflow-hidden">
-                  {/* ปล่องลิฟต์: ไม่ยืด, จำกัดความกว้างตาม breakpoint */}
-                  <div className="
-                          flex-none min-w-0
-                          w-[160px]            /* mobile */
-                          sm:w-[240px]
-                          md:w-[260px]
-                          lg:w-[180px]         /* เดสก์ท็อป แคบลง */
-                          xl:w-[180px]         /* จอกว้างค่อยขยายได้หน่อย */
-                        ">
+                  <div className="flex-none min-w-0 w-[160px] sm:w-[240px] md:w-[260px] lg:w-[180px] xl:w-[180px]">
                     <div className="rounded-xl border border-gray-300 bg-white p-3">
                       <ElevatorShaft st={st} />
                     </div>
@@ -98,14 +97,16 @@ export default function MonitorOverview() {
 
                   {/* แผงควบคุม: กินพื้นที่ที่เหลือทั้งหมด */}
                   <div className="flex-1 min-w-0">
-                    <div className="w-full max-w-full overflow-hidden **border rounded-lg p-2**">
-                      <ElevatorControlPanel
+                    <div className="w-full max-w-full overflow-hidden border rounded-lg p-2">
+                      <ElevatorControlPanel 
                         st={st}
+                        // เชื่อมต่อ onSelectFloor กับฟังก์ชันที่เรียก API
+                        onSelectFloor={handleFloorSelect}
+                        // ส่วนอื่น ๆ ที่อาจเพิ่มในภายหลัง เช่น onDoor, onMode
                       />
                     </div>
                   </div>
                 </div>
-
 
                 {/* Footer link */}
                 <div className="mt-2 text-right">
