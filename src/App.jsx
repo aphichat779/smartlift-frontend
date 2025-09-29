@@ -11,6 +11,7 @@ import Reset2FA from "./components/auth/Reset2FA";
 import TwoFactorSetup from "./components/security/TwoFactorSetup";
 import UserProfile from "./components/profile/UserProfile";
 import AdminUserManagement from "./components/admin/AdminUserManagement";
+import AdminAssignTask from "./components/pages/AdminAssignTask";
 
 import MainLayout from "./components/layouts/MainLayout";
 import DashboardContent from "./components/dashboard/Dashboard";
@@ -24,6 +25,7 @@ import Reports from "./components/pages/Reports";
 import MonitorAll from "./components/pages/MonitorAll";
 import MonitorOverview from "./components/pages/MonitorOverview";
 import ElevatorDetail from "./components/pages/ElevatorDetail";
+import TechnicianTasks from "./components/pages/TechnicianTasks";
 
 import {
   Dialog,
@@ -165,12 +167,14 @@ export default function App() {
         <Route path="/profile" element={<Shell><UserProfile /></Shell>} />
         <Route path="/2fa-setup" element={<Shell><TwoFactorSetup /></Shell>} />
         <Route path="/admin-users" element={<Shell><AdminUserManagement /></Shell>} />
+        <Route path="/admin-assign" element={<Shell><AdminAssignTask /></Shell>} />
         <Route path="/organizations" element={<Shell><Organizations /></Shell>} />
         <Route path="/buildings" element={<Shell><Buildings /></Shell>} />
         <Route path="/elevators" element={<Shell><Elevators /></Shell>} />
         <Route path="/notifications" element={<Shell><NotificationsPage /></Shell>} />
         <Route path="/settings" element={<Shell><SettingsPage /></Shell>} />
         <Route path="/reports" element={<Shell><Reports /></Shell>} />
+        <Route path="/my-tasks" element={<Shell><TechnicianTasks /></Shell>} />
 
         {/* ✅ Monitor pages */}
         <Route path="/monitor" element={<Shell><MonitorAll /></Shell>} />

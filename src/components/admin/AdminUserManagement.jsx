@@ -40,12 +40,34 @@ import {
   Edit2,
   Building,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 const getProfileImageSrc = (imgUrl) => {
   if (imgUrl) {
     return `${import.meta.env.VITE_REACT_APP_API_URL}${imgUrl}`;
   }
   return 'https://via.placeholder.com/150';
+};
+
+// แปลงค่าจากแบ็กเอนด์ให้เป็นชนิดที่ใช้ได้ชัวร์
+const asBool = (v) => v === true || v === 1 || v === '1';
+const asNum = (v, d = 0) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
+};
+
+const roleLabel = (role) => {
+  switch (role) {
+    case 'admin': return 'ผู้ดูแลระบบ';
+    case 'org_admin': return 'ผู้ดูแลองค์กร';
+    case 'technician': return 'ช่างเทคนิค';
+    default: return 'ผู้ใช้';
+  }
+};
+const roleBadgeVariant = (role) => {
+  if (role === 'admin') return 'default';
+  if (role === 'org_admin') return 'outline';
+  return 'secondary';
 };
 
 const UpdateUserForm = ({ user, organizations, onUpdate }) => {
@@ -61,12 +83,9 @@ const UpdateUserForm = ({ user, organizations, onUpdate }) => {
     setSuccess('');
     try {
       const updates = {};
-      if (role !== user.role) {
-        updates.role = role;
-      }
-      if (orgId !== user.org_id) {
-        updates.org_id = parseInt(orgId);
-      }
+      if (role !== user.role) updates.role = role;
+      if (orgId !== user.org_id) updates.org_id = parseInt(orgId);
+
       if (Object.keys(updates).length > 0) {
         await apiService.adminUpdateUser(user.id, updates);
         setSuccess('อัปเดตข้อมูลผู้ใช้สำเร็จ');
@@ -86,6 +105,7 @@ const UpdateUserForm = ({ user, organizations, onUpdate }) => {
         <DialogTitle>แก้ไขผู้ใช้: {user.username}</DialogTitle>
         <DialogDescription>อัปเดตบทบาทหรือองค์กรสำหรับผู้ใช้คนนี้</DialogDescription>
       </DialogHeader>
+
       {success && (
         <Alert>
           <CheckCircle className="h-4 w-4 text-green-600" />
@@ -100,6 +120,7 @@ const UpdateUserForm = ({ user, organizations, onUpdate }) => {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
       <div className="space-y-2">
         <Label htmlFor="role">บทบาท</Label>
         <Select value={role} onValueChange={setRole} disabled={loading}>
@@ -109,10 +130,12 @@ const UpdateUserForm = ({ user, organizations, onUpdate }) => {
           <SelectContent>
             <SelectItem value="user">ผู้ใช้</SelectItem>
             <SelectItem value="technician">ช่างเทคนิค</SelectItem>
+            <SelectItem value="org_admin">ผู้ดูแลองค์กร</SelectItem>
             <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="org_id">องค์กร</Label>
         <Select value={orgId?.toString()} onValueChange={setOrgId} disabled={loading}>
@@ -126,16 +149,10 @@ const UpdateUserForm = ({ user, organizations, onUpdate }) => {
           </SelectContent>
         </Select>
       </div>
+
       <DialogFooter>
         <Button onClick={handleUpdate} disabled={loading || (role === user.role && orgId === user.org_id)}>
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              กำลังบันทึก...
-            </>
-          ) : (
-            'บันทึกการเปลี่ยนแปลง'
-          )}
+          {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />กำลังบันทึก...</>) : 'บันทึกการเปลี่ยนแปลง'}
         </Button>
       </DialogFooter>
     </div>
@@ -155,7 +172,6 @@ const AdminUserManagement = () => {
   const [success, setSuccess] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // อ่าน currentUserId จาก localStorage
   const currentUserId = (() => {
     try {
       const raw = localStorage.getItem('user_data');
@@ -188,6 +204,17 @@ const AdminUserManagement = () => {
     }
   };
 
+  const handleToggleStatusWithValue = async (user, nextChecked) => {
+    try {
+      await apiService.adminToggleUserStatus(user.id, nextChecked);
+      setSuccess(`เปลี่ยนสถานะของ ${user.username} สำเร็จ`);
+      fetchData();
+      setTimeout(() => setSuccess(''), 2500);
+    } catch (err) {
+      setError(err.message || 'ไม่สามารถเปลี่ยนสถานะผู้ใช้ได้');
+    }
+  };
+
   const handleReset2FA = async () => {
     if (!selectedUser || !resetReason.trim()) {
       setError('กรุณาระบุเหตุผลในการรีเซ็ต 2FA');
@@ -215,24 +242,6 @@ const AdminUserManagement = () => {
     setSelectedUser(null);
   };
 
-  const handleToggleStatus = async (user) => {
-    try {
-      await apiService.adminToggleUserStatus(user.id, !user.is_active);
-      setSuccess(`เปลี่ยนสถานะของ ${user.username} สำเร็จ`);
-      fetchData();
-      setTimeout(() => setSuccess(''), 2500);
-    } catch (err) {
-      setError(err.message || 'ไม่สามารถเปลี่ยนสถานะผู้ใช้ได้');
-    }
-  };
-
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
   const openResetDialog = (user) => {
     setSelectedUser(user);
     setResetDialogOpen(true);
@@ -242,6 +251,13 @@ const AdminUserManagement = () => {
     const org = organizations.find(o => o.id === orgId);
     return org ? org.org_name : 'ไม่ระบุ';
   };
+
+  const filteredUsers = users.filter(user =>
+    (user.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.first_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.last_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ((user.email || '') && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
     <div className="w-full h-full md:p-6">
@@ -263,6 +279,7 @@ const AdminUserManagement = () => {
               </Badge>
             </div>
           </CardHeader>
+
           <CardContent className="space-y-6">
             {error && (
               <Alert variant="destructive">
@@ -276,6 +293,7 @@ const AdminUserManagement = () => {
                 <AlertDescription className="text-green-700">{success}</AlertDescription>
               </Alert>
             )}
+
             <div className="relative">
               <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
@@ -285,6 +303,7 @@ const AdminUserManagement = () => {
                 className="w-full pl-9 max-w-none md:max-w-sm"
               />
             </div>
+
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -311,6 +330,11 @@ const AdminUserManagement = () => {
                   <TableBody>
                     {filteredUsers.map((user) => {
                       const isCurrentUser = user.id === currentUserId;
+
+                      // ✅ ปรับค่าที่นี่ทุกครั้งก่อนเรนเดอร์
+                      const gaEnabled = asBool(user.ga_enabled);
+                      const attempts = asNum(user.failed_2fa_attempts, 0);
+
                       return (
                         <TableRow key={user.id}>
                           <TableCell>
@@ -332,50 +356,77 @@ const AdminUserManagement = () => {
                               </div>
                             </div>
                           </TableCell>
+
                           <TableCell>
                             <div className="space-y-1 text-sm">
                               <div className="flex items-center space-x-1">
                                 <Mail className="h-3 w-3" />
-                                <span>{user.email}</span>
+                                <span>{user.email || '—'}</span>
                               </div>
                               <div className="flex items-center space-x-1">
                                 <Phone className="h-3 w-3" />
-                                <span>{user.phone}</span>
+                                <span>{user.phone || '—'}</span>
                               </div>
                             </div>
                           </TableCell>
+
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <Building className="h-4 w-4 text-muted-foreground" />
                               <span>{getOrgName(user.org_id)}</span>
                             </div>
                           </TableCell>
+
                           <TableCell>
-                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                              {user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role === 'technician' ? 'ช่างเทคนิค' : 'ผู้ใช้'}
+                            <Badge variant={roleBadgeVariant(user.role)}>
+                              {roleLabel(user.role)}
                             </Badge>
                           </TableCell>
+
                           <TableCell>
                             <div className="flex items-center space-x-2">
-                              {user.ga_enabled ? (
+                              {gaEnabled ? (
                                 <Shield className="h-4 w-4 text-green-600" />
                               ) : (
                                 <ShieldOff className="h-4 w-4 text-gray-400" />
                               )}
                             </div>
                           </TableCell>
+
                           <TableCell>
-                            {user.is_active ? (
-                              <Badge variant="default" className="bg-green-500 hover:bg-green-500">ใช้งานได้</Badge>
-                            ) : (
-                              <Badge variant="destructive">ปิดใช้งาน</Badge>
-                            )}
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                checked={!!asBool(user.is_active)}
+                                onCheckedChange={(checked) => handleToggleStatusWithValue(user, checked)}
+                                disabled={isCurrentUser}
+                                aria-label={`สลับสถานะของ ${user.username}`}
+                                className={
+                                  asBool(user.is_active)
+                                    ? "data-[state=checked]:bg-green-500"
+                                    : "data-[state=unchecked]:bg-red-500"
+                                }
+                              />
+                              <span
+                                className={
+                                  asBool(user.is_active)
+                                    ? "text-600 text-sm"
+                                    : "text-red-600 text-sm"
+                                }
+                              >
+                                {asBool(user.is_active) ? "ใช้งาน" : "ปิดใช้งาน"}
+                              </span>
+                            </div>
                           </TableCell>
+
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <Dialog>
                                 <DialogTrigger asChild>
-                                  <Button variant="outline" size="sm" disabled={isCurrentUser}>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-[#8ED1FC] hover:bg-[#6ec5f9] "
+                                    disabled={isCurrentUser}>
                                     <Edit2 className="h-3 w-3 mr-1" />
                                     แก้ไข
                                   </Button>
@@ -384,20 +435,19 @@ const AdminUserManagement = () => {
                                   <UpdateUserForm user={user} organizations={organizations} onUpdate={handleUpdateUser} />
                                 </DialogContent>
                               </Dialog>
-                              {user.ga_enabled && (
+
+                              {gaEnabled && attempts > 0 && (
+                                <Badge variant="secondary" className="px-2 py-0.5">
+                                  {attempts}
+                                </Badge>
+                              )}
+
+                              {gaEnabled && (
                                 <Button variant="outline" size="sm" onClick={() => openResetDialog(user)} disabled={isCurrentUser}>
                                   <RotateCcw className="h-3 w-3 mr-1" />
                                   รีเซ็ต 2FA
                                 </Button>
                               )}
-                              <Button
-                                size="sm"
-                                variant={user.is_active ? 'destructive' : 'default'}
-                                onClick={() => handleToggleStatus(user)}
-                                disabled={isCurrentUser}
-                              >
-                                {user.is_active ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน'}
-                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -463,14 +513,7 @@ const AdminUserManagement = () => {
                   onClick={handleReset2FA}
                   disabled={resetLoading || !resetReason.trim()}
                 >
-                  {resetLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      กำลังรีเซ็ต...
-                    </>
-                  ) : (
-                    'ยืนยันการรีเซ็ต'
-                  )}
+                  {resetLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />กำลังรีเซ็ต...</>) : 'ยืนยันการรีเซ็ต'}
                 </Button>
               </div>
             </div>

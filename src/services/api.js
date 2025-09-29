@@ -21,6 +21,7 @@ class ApiService {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // ถ้าเป็น FormData ไม่ต้องตั้ง Content-Type ให้ browser จัดการ boundary เอง
     if (options.body instanceof FormData) {
       delete config.headers['Content-Type'];
     }
@@ -34,7 +35,14 @@ class ApiService {
         throw new Error('AUTH_EXPIRED');
       }
 
-      const data = await response.json();
+      // พยายาม parse JSON ถ้าไม่ได้ให้โยนข้อความดิบ
+      let data;
+      const text = await response.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { message: text || 'Unexpected response' };
+      }
 
       if (!response.ok) {
         throw new Error(data.message || 'API request failed');
@@ -47,6 +55,9 @@ class ApiService {
     }
   }
 
+  // ==========================
+  // Dashboard
+  // ==========================
   async getDashboard(section) {
     const ep = section
       ? `/api/dashboard/dashboard.php?section=${encodeURIComponent(section)}`
@@ -263,25 +274,38 @@ class ApiService {
     });
   }
 
+  // >>> NEW: Progress API <<<
+  async getReportProgressByReport(rp_id) {
+    return this.request(`/api/work/reports.php?progress=1&rp_id=${rp_id}`);
+  }
+
+  async getReportProgressByTask(tk_id) {
+    return this.request(`/api/work/reports.php?progress=1&tk_id=${tk_id}`);
+  }
+
   // ==========================
   // Admin Users
   // ==========================
   async getUsers(page = 1, limit = 20) {
-    return this.request(`/api/admin/users?page=${page}&limit=${limit}`);
+    // ✅ backend ใช้ users.php
+    return this.request(`/api/admin/users.php?page=${page}&limit=${limit}`);
   }
 
   async adminUpdateUser(userId, updates = {}) {
-    if (!userId || typeof userId !== 'number') {
+    const uid = Number(userId);
+    if (!uid || Number.isNaN(uid)) {
       throw new Error('userId ไม่ถูกต้อง');
     }
+
     const tasks = [];
 
+    // เปลี่ยนบทบาท
     if (typeof updates.role === 'string') {
       tasks.push(
         this.request('/api/admin/users.php', {
           method: 'POST',
           body: JSON.stringify({
-            user_id: userId,
+            user_id: uid,
             action: 'update_role',
             role: updates.role,
           }),
@@ -289,12 +313,13 @@ class ApiService {
       );
     }
 
+    // เปลี่ยนองค์กร
     if (typeof updates.org_id === 'number') {
       tasks.push(
         this.request('/api/admin/users.php', {
           method: 'POST',
           body: JSON.stringify({
-            user_id: userId,
+            user_id: uid,
             action: 'update_user_org',
             org_id: updates.org_id,
           }),
@@ -311,10 +336,11 @@ class ApiService {
   }
 
   async adminToggleUserStatus(userId, isActive) {
+    const uid = Number(userId);
     return this.request('/api/admin/users.php', {
       method: 'POST',
       body: JSON.stringify({
-        user_id: userId,
+        user_id: uid,
         action: 'toggle_status',
         is_active: isActive ? 1 : 0,
       }),
@@ -322,9 +348,11 @@ class ApiService {
   }
 
   async adminReset2FA(userId, reason) {
-    return this.request('/api/admin/reset-2fa', {
+    const uid = Number(userId);
+    // ✅ ให้ใช้ไฟล์ .php ตามสไตล์ backend ปัจจุบัน
+    return this.request('/api/admin/reset-2fa.php', {
       method: 'POST',
-      body: JSON.stringify({ user_id: userId, reason }),
+      body: JSON.stringify({ user_id: uid, reason }),
     });
   }
 }

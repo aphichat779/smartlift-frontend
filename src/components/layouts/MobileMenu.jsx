@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Bell, Building, Users, Settings, HelpCircle, LogOut, Menu, Shield, Monitor // เพิ่มไอคอน Shield
+  LayoutDashboard, Bell, Building, Users, Settings, HelpCircle, LogOut, Menu, Shield, Monitor, ClipboardList // เพิ่ม ClipboardList ที่นี่
 } from 'lucide-react';
 import { GiElevator } from 'react-icons/gi';
 import { VscOrganization } from "react-icons/vsc";
@@ -30,6 +30,8 @@ const MobileMenu = () => {
     { id: 'elevators', path: '/elevators', icon: GiElevator, label: 'Elevators' },
     { id: 'notifications', path: '/notifications', icon: Bell, label: 'Notifications' },
     ...(user?.role === 'admin' ? [{ id: 'admin-users', path: '/admin-users', icon: Users, label: 'Users' }] : []),
+    // เมนูสำหรับ technician
+    ...(user?.role === 'technician' ? [{ id: 'my-tasks', path: '/my-tasks', icon: ClipboardList, label: 'My Tasks' }] : []),
   ];
 
   const dropdownItems = [
