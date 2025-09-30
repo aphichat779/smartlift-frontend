@@ -1,56 +1,439 @@
-ตัวอย่าง lift_state ที่จำลองขึ้นมาเพื่อทดสอบแต่ละสถานะ:
+// src/components/ElevatorControlPanel.jsx
+import React, { useMemo } from "react";
+import PropTypes from "prop-types";
+import { Wifi, WifiOff } from "lucide-react";
+import {
+  getFloorIndices, getFloorLabel, getStatusBg, getStatusColor,
+  translateStatus, LIFT_STATE_BITS
+} from "@/utils/liftUtils";
 
-powerOn (ระบบทำงาน)
+export default function ElevatorControlPanel({
+  st,
+  onSelectFloor,
+  onSend,
+  onDoor, // (optional) toggle door open/close
+  onMode, // (optional) change mode
+}) {
+  // ---- guards & deriveds ----
+  const isOnline = st?.connection === "ONLINE";
+  const isMoving = Boolean(st?.moving);
+  const floorIndices = useMemo(() => (st ? getFloorIndices(st) : []), [st?.floor_name, st?.max_level, st?.id]);
+  const hasFloors = floorIndices.length > 0;
 
-lift_state = "100000000000"
+  const selectedFloor = Number.isFinite(st?.selectedFloor) ? st.selectedFloor : null;
+  const currentIdx = Number.isFinite(st?.floorPosition)
+    ? Math.round(st.floorPosition)
+    : 0;
+  
+  // สถานะปุ่มกดภายในลิฟต์
+  const carStatus = st?.car_status || "";
 
-doorOpen (สัญญาณเตือน)
+  const canSend =
+    isOnline &&
+    !isMoving &&
+    hasFloors &&
+    selectedFloor !== null &&
+    selectedFloor !== currentIdx;
 
-lift_state = "010000000000"
+  const onlineBadgeClass = isOnline ? "text-green-600" : "text-red-600";
 
-overload (น้ำหนักเกิน)
+  return (
+    <div className="bg-white rounded-lg p-6 border border-gray-200 mb-4">
+      <h3 className="text-sm font-bold mb-4 text-blue-600 text-center">
+        แผงควบคุมลิฟต์ {st?.lift_name ?? "-"}
+      </h3>
 
-lift_state = "001000000000"
+      <div className="space-y-4">
+        {/* Floor selector */}
+        <div>
+          <div
+            className="grid gap-1"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(44px, 1fr))" }}
+          >
+            
+            {hasFloors ? (
+              floorIndices.map((idx) => {
+                const lbl = getFloorLabel(st, idx);
+                // ตรวจสอบสถานะปุ่มจาก carStatus
+                const isPressed = carStatus[idx] === "1";
+                const isSelected = selectedFloor === idx;
+                const disabled = !isOnline || isMoving;
 
-moving (กำลังเคลื่อนที่)
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    // เมื่อกดปุ่มจะอัปเดตสถานะและส่งไปยัง backend
+                    onClick={() => onSelectFloor?.(st.id, idx)}
+                    disabled={disabled}
+                    className={[
+                      "h-10 rounded text-sm font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400",
+                      // เงื่อนไขใหม่: ถ้าปุ่มถูกกด จะใช้สีนี้
+                      isPressed
+                        ? "bg-blue-600 text-white shadow-lg"
+                        // ถ้าปุ่มถูกเลือกแต่ยังไม่ได้ถูกกด
+                        : isSelected
+                        ? "bg-blue-300 text-blue-900"
+                        : "bg-gray-200 text-gray-800 hover:bg-gray-300",
+                      disabled ? "opacity-60 cursor-not-allowed" : "",
+                    ].join(" ")}
+                    title={`ชั้น ${lbl}`}
+                    aria-label={`เลือกชั้น ${lbl}`}
+                    aria-pressed={isPressed}
+                  >
+                    {lbl}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="text-sm text-gray-500 py-2">ไม่มีข้อมูลชั้น</div>
+            )}
+          </div>
+        </div>
 
-lift_state = "000100000000"
+        {/* Status row */}
+        
 
-emergency (โหมดฉุกเฉิน)
+        {/* Quick actions (optional) */}
+        {(onDoor || onMode) && (
+          <div className="grid grid-cols-2 gap-3">
+            {onDoor && (
+              <button
+                type="button"
+                onClick={() => onDoor(st.id)}
+                disabled={!isOnline}
+                className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-2 px-3 rounded"
+                title="สั่งเปิด/ปิดประตู | Toggle Door"
+              >
+                ประตู | Door
+              </button>
+            )}
+            {onMode && (
+              <button
+                type="button"
+                onClick={() => onMode(st.id)}
+                disabled={!isOnline}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-2 px-3 rounded"
+                title="สลับโหมด | Toggle Mode"
+              >
+                โหมด | Mode
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-lift_state = "000010000000"
+ElevatorControlPanel.propTypes = {
+  st: PropTypes.object,
+  onSelectFloor: PropTypes.func,
+  onSend: PropTypes.func,
+  onDoor: PropTypes.func,
+  onMode: PropTypes.func,
+};
+,
+// src/components/elevator/ElevatorShaft.jsx
+import React, { useMemo } from "react";
+import { motion, useTransform, useMotionValue } from "framer-motion";
+import { ArrowUp, ArrowDown, Square } from "lucide-react";
+import { getFloorIndices, getFloorLabel } from "@/utils/liftUtils";
 
-maintenance (โหมดบำรุงรักษา)
+const getDirectionIcon = (direction) => {
+  switch (direction) {
+    case "UP":
+      return <ArrowUp className="w-4 h-4 text-green-600 animate-bounce" />;
+    case "DOWN":
+      return <ArrowDown className="w-4 h-4 text-red-600 animate-bounce" />;
+    default:
+      return <Square className="w-4 h-4 text-gray-600" />;
+  }
+};
 
-lift_state = "000001000000"
+/**
+ * Props:
+ * - st: { floorLabels, max_level, floorPosition, moving, door, doorAnimating, direction }
+ * - carPosMV?: MotionValue<number>  (ไม่บังคับ; ถ้าไม่ส่งมา จะ fallback เป็น motion value ภายใน)
+ */
+export default function ElevatorShaft({ st, carPosMV }) {
+  const floorHeight = 36; // px ต่อชั้น
+  const cabPixelHeight = 40;
 
-fault (ขัดข้อง)
+  const indices = getFloorIndices(st);
+  const levels = indices.length || st?.max_level || 1;
+  const shaftHeight = floorHeight * levels;
 
-lift_state = "000000100000"
+  // ✅ Fallback: ถ้าไม่ได้ส่ง carPosMV มา (เช่นจุดเรียกอื่นในแอป)
+  // ให้สร้าง motion value จาก floorPosition ปัจจุบัน
+  const fallbackMV = useMotionValue(st?.floorPosition ?? 1);
+  const posMV = carPosMV ?? fallbackMV;
 
-fire (โหมดไฟไหม้)
+  // map "เลขชั้น" (1..levels, ทศนิยมได้) -> bottom px
+  const carBottomMV = useTransform(
+    posMV,
+    (v) => (Math.max(1, Math.min(levels, v)) - 1) * floorHeight + (floorHeight - cabPixelHeight) / 2
+  );
 
-lift_state = "000000010000"
+  const floorsList = useMemo(
+    () =>
+      indices.map((idx) => {
+        const lbl = getFloorLabel(st, idx);
+        return (
+          <div key={idx} className="flex items-center gap-2" style={{ height: `${floorHeight}px` }}>
+            <div className="font-extrabold text-gray-700 text-sm">{lbl}</div>
+          </div>
+        );
+      }),
+    [indices, st]
+  );
 
-outOfService (งดให้บริการ)
+  return (
+    <div className="w-full max-w-sm mx-auto p-4 bg-white rounded-lg shadow-md">
+      <div className="flex justify-between items-start gap-4 relative">
+        {/* หมายเลขชั้น */}
+        <div className="flex flex-col-reverse justify-between" style={{ height: `${shaftHeight}px` }}>
+          {floorsList}
+        </div>
 
-lift_state = "000000001000"
+        {/* ปล่องลิฟต์ */}
+        <div
+          className="relative w-40 flex-grow bg-gray-200 rounded-lg border-2 border-gray-300 overflow-hidden"
+          style={{ height: `${shaftHeight}px` }}
+        >
+          {/* เส้นแบ่งชั้น */}
+          <div className="absolute inset-y-0 left-0 w-full flex flex-col-reverse">
+            {indices.map((idx) => (
+              <div key={idx} className="w-full border-t border-gray-300" style={{ height: `${floorHeight}px` }} />
+            ))}
+          </div>
 
-atFloor (จอดที่ชั้น)
-
-lift_state = "000000000100"
-
-alarm (สัญญาณเตือน)
-
-lift_state = "000000000010"
-
-unknown (ไม่ทราบสถานะ)
-
-lift_state = "000000000001"
-
-<div className="flex flex-wrap items-center gap-2 mb-4">
-                <Badge active={!state.outOfService && !state.fault} type="success">พร้อมให้บริการ</Badge>
-                <Badge active={state.moving}>กำลังเคลื่อนที่</Badge>
-                <Badge active={state.maintenance}>บำรุงรักษา</Badge>
-                <Badge active={state.fault} type="danger">ขัดข้อง</Badge>
+          {/* รถลิฟต์ (ขยับด้วย motion value; ไม่ re-render ทุกเฟรม) */}
+          <motion.div
+            className="absolute left-1/2 -translate-x-1/2 w-16 h-10"
+            style={{ bottom: carBottomMV, zIndex: 10, willChange: "transform,bottom" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          >
+            <div
+              className={`w-full h-full rounded border-2 transition-colors ${
+                st?.moving ? "bg-purple-600 border-purple-400 shadow-lg shadow-purple-500/50" : "bg-blue-600 border-blue-400"
+              }`}
+            >
+              <div className="relative h-full flex items-center">
+                <div
+                  className={`w-1/2 h-full bg-blue-900 border-r-2 border-blue-700 transition-transform duration-500 transform ${
+                    st?.door === "OPEN" ? "-translate-x-full" : "translate-x-0"
+                  } ${st?.doorAnimating && st?.door === "OPEN" ? "animate-pulse" : ""}`}
+                />
+                <div
+                  className={`w-1/2 h-full bg-blue-900 border-l-2 border-blue-700 transition-transform duration-500 transform ${
+                    st?.door === "OPEN" ? "translate-x-full" : "translate-x-0"
+                  } ${st?.doorAnimating && st?.door === "OPEN" ? "animate-pulse" : ""}`}
+                />
               </div>
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                {getDirectionIcon(st?.direction)}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+}
+,
+// src/pages/MonitorAll.jsx
+import React from "react";
+import { Monitor as MonitorIcon, Wifi, WifiOff } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useElevators } from '../../contexts/ElevatorContext';
+import ElevatorShaft from "../elevator/ElevatorShaft";
+
+export default function MonitorAll() {
+  const { elevatorStates, filteredLiftIds } = useElevators();
+
+  // กันกรณี state ยังไม่พร้อม (ปกติจะพร้อมเพราะมี initial mock)
+  if (!elevatorStates) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6">
+        <div className="max-w-7xl mx-auto">กำลังเตรียมข้อมูล...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 text-gray-800 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <MonitorIcon className="w-8 h-8 text-blue-600" />
+            <h1 className="text-2xl font-bold">หน้าที่ 1: Monitor ทั้งหมด (ย่อ)</h1>
+          </div>
+          <div className="flex gap-3">
+            <Link to="/monitor/overview" className="px-4 py-2 bg-blue-600 text-white rounded">
+              Overview
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {filteredLiftIds.map((id) => {
+            const st = elevatorStates[id];
+            return (
+              <Link
+                key={id}
+                to={`/lifts/${id}`}
+                className="bg-white hover:bg-gray-50 rounded-lg p-6 border border-gray-300 transition-all block"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-bold text-blue-600">{st.lift_name}</h3>
+                  <div className="flex items-center">
+                    {st.connection === "ONLINE" ? (
+                      <Wifi className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <WifiOff className="w-5 h-5 text-red-600" />
+                    )}
+                  </div>
+                </div>
+                <ElevatorShaft st={st} />
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="text-center text-gray-500 text-xs mt-10">
+          ระบบควบคุมลิฟต์อัจฉริยะ © 2025
+        </div>
+      </div>
+    </div>
+  );
+}
+,
+// src/components/pages/MonitorOverview.jsx
+
+import React from "react";
+import { Monitor as MonitorIcon } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useElevators } from "../../contexts/ElevatorContext";
+import ElevatorShaft from "../elevator/ElevatorShaft";
+import ElevatorControlPanel from "../elevator/ElevatorControlPanel";
+import { getStatusBg, getStatusColor } from "../../utils/liftUtils";
+
+export default function MonitorOverview() {
+  // ดึงฟังก์ชันสำหรับส่งคำสั่งจาก Context
+  const { elevatorStates, filteredLiftIds, handleFloorSelect } = useElevators();
+
+  // ตรวจสอบว่ามีข้อมูลหรือไม่
+  if (!elevatorStates) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6">
+        <div className="max-w-7xl mx-auto">กำลังเตรียมข้อมูล...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 text-gray-800 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <MonitorIcon className="w-8 h-8 text-blue-600" />
+            <h1 className="text-2xl font-bold">
+              หน้าที่ 2: Overview (ข้อมูลคร่าว ๆ)
+            </h1>
+          </div>
+          <div className="flex gap-3">
+            <Link to="/monitor" className="px-4 py-2 bg-gray-200 rounded">
+              Monitor
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          {filteredLiftIds.map((id) => {
+            const st = elevatorStates[id];
+            return (
+              <div
+                key={id}
+                className="bg-white hover:bg-gray-50 rounded-lg p-6 border border-gray-200 transition-all"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <Link
+                    to={`/lifts/${id}`}
+                    className="text-lg font-bold text-blue-600 hover:underline"
+                  >
+                    {st.lift_name}
+                  </Link>
+                  <div
+                    className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${getStatusBg(
+                      st.status
+                    )}`}
+                  >
+                    <span className={getStatusColor(st.status)}>
+                      {st.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Info row */}
+                <div className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm mb-4">
+                  <div className="flex items-center">
+                    <span className="text-gray-600"></span>
+                    <span className="font-medium">
+                      {st.org_name} {st.building_name}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-gray-600">โหมด:</span>
+                    <span className="font-medium">
+                      {st.mode === "AUTO" ? "อัตโนมัติ" : "แมนนวล"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-gray-600">ประตู:</span>
+                    <span className="font-medium">
+                      {st.door === "OPEN" ? "เปิด" : "ปิด"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Main layout: shaft (fixed) | control (fluid) */}
+                <div className="flex flex-row gap-4 items-start overflow-hidden">
+                  <div className="flex-none min-w-0 w-[160px] sm:w-[240px] md:w-[260px] lg:w-[180px] xl:w-[180px]">
+                    <div className="rounded-xl border border-gray-300 bg-white p-3">
+                      <ElevatorShaft st={st} />
+                    </div>
+                  </div>
+
+                  {/* แผงควบคุม: กินพื้นที่ที่เหลือทั้งหมด */}
+                  <div className="flex-1 min-w-0">
+                    <div className="w-full max-w-full overflow-hidden border rounded-lg p-2">
+                      <ElevatorControlPanel 
+                        st={st}
+                        // เชื่อมต่อ onSelectFloor กับฟังก์ชันที่เรียก API
+                        onSelectFloor={handleFloorSelect}
+                        // ส่วนอื่น ๆ ที่อาจเพิ่มในภายหลัง เช่น onDoor, onMode
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer link */}
+                <div className="mt-2 text-right">
+                  <Link
+                    to={`/lifts/${id}`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    ดูรายละเอียด →
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+,
