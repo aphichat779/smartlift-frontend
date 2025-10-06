@@ -20,14 +20,17 @@ import { PiElevatorLight } from "react-icons/pi";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertTriangle, Wrench, Search, Plus, Save, X, PencilLine, Trash2, Loader2, Building,
-  CheckCircle2
+  CheckCircle2, Calendar, Clock, Filter, MoreHorizontal, Eye
 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const BASE = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost';
 
-const STATUS_ORDER = ['assign','preparing','progress','test','complete'];
-const statusIndex = (s) => Math.max(0, STATUS_ORDER.indexOf((s||'').toLowerCase()));
+const STATUS_ORDER = ['assign', 'preparing', 'progress', 'test', 'complete'];
+const statusIndex = (s) => Math.max(0, STATUS_ORDER.indexOf((s || '').toLowerCase()));
 
 const Reports = () => {
   const [reports, setReports] = useState([]);
@@ -37,8 +40,8 @@ const Reports = () => {
 
   // filters
   const [q, setQ] = useState('');
-  const [urgency, setUrgency] = useState('all'); // all|low|medium|high
-  const [status, setStatus] = useState('all');   // all|open|inprogress|closed
+  const [dateFilter, setDateFilter] = useState('');
+  const [orgFilter, setOrgFilter] = useState('all');
 
   // options
   const [orgs, setOrgs] = useState([]);
@@ -68,7 +71,7 @@ const Reports = () => {
 
   const quickIssues = [
     'ลิฟต์ค้างระหว่างชั้น',
-    'ประตูลิฟต์ปิดไม่สนิท',
+    'ประตูิฟต์ปิดไม่สนิท',
     'มีเสียงดังผิดปกติระหว่างวิ่ง',
     'ปุ่มกดภายในไม่ทำงาน',
     'ไฟชั้นแสดงผลผิดพลาด',
@@ -138,7 +141,6 @@ const Reports = () => {
     setOpenForm(true);
     loadOrgs();
     setBuildings([]); setLifts([]);
-    setUrgency('medium'); setStatus('open');
   };
 
   const openEdit = async (report) => {
@@ -150,8 +152,6 @@ const Reports = () => {
       detail: report.detail ?? '',
       date_rp: report.date_rp ?? todayStr(),
     });
-    setUrgency(parseUrgency(report.detail));
-    setStatus(parseStatus(report.detail));
     setOpenForm(true);
     await loadOrgs();
     await loadBuildings(report.org_id);
@@ -186,30 +186,10 @@ const Reports = () => {
     openProgressForReport(report);
   };
 
-  // ---------- tag helpers ----------
-  const parseUrgency = (detail = '') => {
-    const m = detail.match(/\[URG:(.*?)\]/i);
-    const level = (m?.[1] || '').toLowerCase();
-    if (['low', 'medium', 'high'].includes(level)) return level;
-    if (/ค้าง|ไหม้|ฉุกเฉิน|ติดอยู่|ช็อต/i.test(detail)) return 'high';
-    if (/ช้า|ผิดพลาด|เสียงดัง/i.test(detail)) return 'medium';
-    return 'low';
-  };
-  const parseStatus = (detail = '') => {
-    const m = detail.match(/\[STA:(.*?)\]/i);
-    const s = (m?.[1] || '').toLowerCase();
-    if (['open', 'inprogress', 'closed'].includes(s)) return s;
-    return 'open';
-  };
-  const urgencyTagForForm = () => (urgency === 'all' ? '[URG:MEDIUM]' : `[URG:${urgency.toUpperCase()}]`);
-  const statusTagForForm  = () => (status === 'all'  ? '[STA:OPEN]'   : `[STA:${status.toUpperCase()}]`);
-
   // ---------- submit ----------
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
     let finalDetail = formData.detail?.trim() || '';
-    finalDetail = finalDetail.replace(/\[URG:.*?\]/gi, '').replace(/\[STA:.*?\]/gi, '').trim();
-    finalDetail = `${finalDetail} ${urgencyTagForForm()} ${statusTagForForm()}`.trim();
 
     try {
       setSaving(true);
@@ -243,83 +223,107 @@ const Reports = () => {
     return (reports || []).filter((r) => {
       const text = [r.detail, r.reporter_name, r.org_name, r.building_name, r.lift_name, r.date_rp].join(' ').toLowerCase();
       const passQ = qLower ? text.includes(qLower) : true;
-      const u = parseUrgency(r.detail);
-      const s = parseStatus(r.detail);
-      const passUrg = urgency === 'all' ? true : u === urgency;
-      const passSta = status === 'all' ? true : s === status;
-      return passQ && passUrg && passSta;
+      const passDate = dateFilter ? r.date_rp === dateFilter : true;
+      const passOrg = orgFilter === 'all' ? true : r.org_id === parseInt(orgFilter);
+      return passQ && passDate && passOrg;
     });
-  }, [reports, q, urgency, status]);
+  }, [reports, q, dateFilter, orgFilter]);
 
-  // ---------- badges ----------
+  // ---------- status helpers ----------
+  const getTaskStatus = (report) => {
+    if (report.assigned_count > 0) {
+      if (report.task_status) {
+        return {
+          status: report.task_status,
+          label: report.task_status === 'assign' ? 'มอบหมายแล้ว' :
+            report.task_status === 'preparing' ? 'กำลังเตรียม' :
+              report.task_status === 'progress' ? 'กำลังดำเนินการ' :
+                report.task_status === 'test' ? 'ทดสอบ' :
+                  report.task_status === 'complete' ? 'เสร็จสิ้น' : report.task_status,
+          color: report.task_status === 'assign' ? 'bg-blue-100 text-blue-800' :
+            report.task_status === 'preparing' ? 'bg-amber-100 text-amber-800' :
+              report.task_status === 'progress' ? 'bg-violet-100 text-violet-800' :
+                report.task_status === 'test' ? 'bg-indigo-100 text-indigo-800' :
+                  report.task_status === 'complete' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+        };
+      }
+      return { status: 'pending', label: 'รอมอบหมาย', color: 'bg-amber-100 text-amber-800' };
+    }
+    return { status: 'open', label: 'เปิดใหม่', color: 'bg-sky-100 text-sky-800' };
+  };
+
+  const getUrgencyLevel = (detail) => {
+    if (/ค้าง|ไหม้|ฉุกเฉิน|ติดอยู่|ช็อต/i.test(detail)) return 'high';
+    if (/ช้า|ผิดพลาด|เสียงดัง/i.test(detail)) return 'medium';
+    return 'low';
+  };
+
   const UrgencyBadge = ({ level }) => {
     const map = {
-      low: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-      medium: 'bg-amber-50 text-amber-700 border border-amber-200',
-      high: 'bg-rose-50 text-rose-700 border border-rose-200',
+      high: 'bg-red-100 text-red-800 border border-red-200',
+      medium: 'bg-amber-100 text-amber-800 border border-amber-200',
+      low: 'bg-green-100 text-green-800 border border-green-200',
     };
     const label = level === 'high' ? 'เร่งด่วน' : level === 'medium' ? 'ปานกลาง' : 'ต่ำ';
-    return <span className={`px-2 py-1 rounded-md text-xs ${map[level] || map.medium}`}>{label}</span>;
-  };
-  const StatusBadge = ({ s }) => {
-    const map = {
-      open: 'bg-sky-50 text-sky-700 border border-sky-200',
-      inprogress: 'bg-violet-50 text-violet-700 border border-violet-200',
-      closed: 'bg-slate-100 text-slate-700 border border-slate-200',
-    };
-    const label = s === 'inprogress' ? 'กำลังดำเนินการ' : s === 'closed' ? 'ปิดงาน' : 'เปิดใหม่';
-    return <span className={`px-2 py-1 rounded-md text-xs ${map[s] || map.open}`}>{label}</span>;
+    return <span className={`px-2 py-1 rounded-md text-xs font-medium ${map[level] || map.low}`}>{label}</span>;
   };
 
   return (
     <div className="w-full pl-4 pr-4 md:pl-6 md:pr-6 lg:pl-8 lg:pr-8">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-6 w-6 text-amber-600" />
-          <h1 className="text-xl font-bold">แจ้งปัญหาลิฟต์ | Elevator Issue Reports</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-6 w-6 text-amber-600" />
+            <h1 className="text-xl font-bold">แจ้งปัญหาลิฟต์</h1>
+          </div>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            แจ้งปัญหาใหม่
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground mt-1">บันทึกและติดตามปัญหาลิฟต์ตามองค์กร/อาคาร/ลิฟต์</p>
       </div>
 
-      {/* Actions / Filters */}
+      {/* Filters */}
       <Card className="mb-6">
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <div className="relative w-full md:w-80">
-                <Search className="h-4 w-4 absolute left-2 top-2.5 text-muted-foreground" />
-                <Input className="pl-8" placeholder="ค้นหา: อาการ, ผู้แจ้ง, องค์กร, อาคาร, ลิฟต์, วันที่…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="ค้นหา: อาการ, ผู้แจ้ง, องค์กร, อาคาร, ลิฟต์, วันที่…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-              <Button variant="outline" onClick={fetchReports}>
-                <Wrench className="h-4 w-4 mr-2" />
-                รีเฟรช
-              </Button>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={urgency} onValueChange={setUrgency}>
-                <SelectTrigger className="w-36"><SelectValue placeholder="ความเร่งด่วน" /></SelectTrigger>
+            <div className="flex flex-wrap gap-2">
+              <div className="w-full md:w-48">
+                <Input
+                  type="date"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                />
+              </div>
+              <Select value={orgFilter} onValueChange={setOrgFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="กรองตามองค์กร" />
+                </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">ทุกความเร่งด่วน</SelectItem>
-                  <SelectItem value="low">ต่ำ</SelectItem>
-                  <SelectItem value="medium">ปานกลาง</SelectItem>
-                  <SelectItem value="high">เร่งด่วน</SelectItem>
+                  <SelectItem value="all">ทุกองค์กร</SelectItem>
+                  {orgs.map((org) => (
+                    <SelectItem key={org.id} value={org.id.toString()}>
+                      {org.org_name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="w-40"><SelectValue placeholder="สถานะงาน" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">ทุกสถานะ</SelectItem>
-                  <SelectItem value="open">เปิดใหม่</SelectItem>
-                  <SelectItem value="inprogress">กำลังดำเนินการ</SelectItem>
-                  <SelectItem value="closed">ปิดงาน</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button onClick={openCreate}>
-                <Plus className="h-4 w-4 mr-2" />
-                แจ้งปัญหาใหม่
+              <Button variant="outline" onClick={fetchReports}>
+                <Filter className="h-4 w-4 mr-2" />
+                รีเฟรช
               </Button>
             </div>
           </div>
@@ -329,86 +333,134 @@ const Reports = () => {
       {/* List */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>รายการแจ้งปัญหา</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>รายการแจ้งปัญหา</CardTitle>
+            <Badge variant="outline">{filtered.length} รายการ</Badge>
+          </div>
           <p className="text-xs text-muted-foreground mt-1">คลิกที่แถวเพื่อดูความคืบหน้า</p>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> กำลังโหลดรายการ…
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>กำลังโหลดรายการ…</span>
             </div>
           ) : error ? (
             <div className="text-rose-700 bg-rose-50 border border-rose-200 rounded-md p-3">{error}</div>
           ) : filtered.length === 0 ? (
-            <div className="text-sm text-muted-foreground">ยังไม่มีข้อมูลการรายงาน</div>
+            <div className="text-center py-8">
+              <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">ไม่พบรายการแจ้งปัญหา</p>
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[110px]">วันที่</TableHead>
-                  <TableHead>ผู้แจ้ง</TableHead>
-                  <TableHead className="min-w-[180px]">สถานที่/ลิฟต์</TableHead>
-                  <TableHead>รายละเอียด</TableHead>
-                  <TableHead className="w-[160px] text-right">สถานะ</TableHead>
-                  <TableHead className="w-[160px] text-right">การจัดการ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((r) => {
-                  const u = parseUrgency(r.detail);
-                  const s = parseStatus(r.detail);
-                  return (
-                    <TableRow
-                      key={r.rp_id}
-                      onClick={() => handleRowClick(r)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRowClick(r); } }}
-                      tabIndex={0}
-                      className="cursor-pointer hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
-                      aria-label="เปิดดูความคืบหน้า"
-                    >
-                      <TableCell className="whitespace-nowrap">{r.date_rp}</TableCell>
-                      <TableCell className="whitespace-nowrap">{r.reporter_name || '—'}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="flex items-center gap-1"><Building className="h-3.5 w-3.5 text-muted-foreground" />{r.org_name || '—'}-{r.building_name || '—'}</span>
-                          <span className="flex items-center gap-1"><PiElevatorLight className="h-3.5 w-3.5 text-muted-foreground" />{r.lift_name || `Lift #${r.lift_id || '—'}`}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <div className="text-sm leading-relaxed">
-                          {r.detail.replace(/\[URG:.*?\]/i, '').replace(/\[STA:.*?\]/i, '').trim()}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex flex-col items-end gap-1">
-                          <UrgencyBadge level={u} />
-                          <StatusBadge s={s} />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); openEdit(r); }}
-                          >
-                            <PencilLine className="h-4 w-4 mr-1" /> แก้ไข
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={saving}
-                            onClick={(e) => { e.stopPropagation(); handleDelete(r.rp_id); }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" /> ลบ
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[100px]">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        วันที่
+                      </div>
+                    </TableHead>
+                    <TableHead>ผู้แจ้ง</TableHead>
+                    <TableHead>สถานที่</TableHead>
+                    <TableHead>รายละเอียด</TableHead>
+                    <TableHead className="w-[120px]">สถานะ</TableHead>
+                    <TableHead className="text-right w-[100px]">จัดการ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((r) => {
+                    const taskStatus = getTaskStatus(r);
+                    const urgency = getUrgencyLevel(r.detail);
+
+                    return (
+                      <TableRow
+                        key={r.rp_id}
+                        onClick={() => handleRowClick(r)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRowClick(r); } }}
+                        tabIndex={0}
+                        className="cursor-pointer hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
+                        aria-label="เปิดดูความคืบหน้า"
+                      >
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {r.date_rp}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={r.reporter_img} />
+                              <AvatarFallback>
+                                {r.reporter_name?.charAt(0) || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{r.reporter_name || '—'}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              <Building className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-sm">{r.org_name || '—'} / {r.building_name || '—'}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <PiElevatorLight className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-sm">{r.lift_name || `Lift #${r.lift_id || '—'}`}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[300px]">
+                          <p className="text-sm truncate">{r.detail}</p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={taskStatus.color}>
+                            {taskStatus.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">เปิดเมนู</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); handleRowClick(r); }}
+                                className="text-primary"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                ดูความคืบหน้า
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); openEdit(r); }}
+                              >
+                                <PencilLine className="h-4 w-4 mr-2" />
+                                แก้ไข
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); handleDelete(r.rp_id); }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                ลบ
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -487,31 +539,6 @@ const Reports = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>ความเร่งด่วน</Label>
-                <Select value={urgency === 'all' ? 'medium' : urgency} onValueChange={(v) => setUrgency(v)}>
-                  <SelectTrigger><SelectValue placeholder="เลือกความเร่งด่วน" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">ต่ำ</SelectItem>
-                    <SelectItem value="medium">ปานกลาง</SelectItem>
-                    <SelectItem value="high">เร่งด่วน</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>สถานะงาน</Label>
-                <Select value={status === 'all' ? 'open' : status} onValueChange={(v) => setStatus(v)}>
-                  <SelectTrigger><SelectValue placeholder="เลือกสถานะ" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">เปิดใหม่</SelectItem>
-                    <SelectItem value="inprogress">กำลังดำเนินการ</SelectItem>
-                    <SelectItem value="closed">ปิดงาน</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={() => setOpenForm(false)}>
                 <X className="h-4 w-4 mr-1" /> ปิด
@@ -530,19 +557,23 @@ const Reports = () => {
         <DialogContent className="sm:max-w-[760px]">
           <DialogHeader>
             <DialogTitle>
-              อัปเดตงาน • {progressTask ? `TASK: ${progressTask.tk_id}` : 'ยังไม่มีงาน (task) ที่ผูกกับรายงานนี้'}
+              อัปเดตงาน • {progressTask ? `TASK: ${progressTask.tk_id}` : 'รอมอบงานให้ช่างผูรับผิดชอบ'}
             </DialogTitle>
             <DialogDescription>อัปเดตสถานะงาน, ดูไทม์ไลน์ความคืบหน้า</DialogDescription>
           </DialogHeader>
 
           {progressLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> กำลังโหลดความคืบหน้า…
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>กำลังโหลดความคืบหน้า…</span>
             </div>
           ) : progressError ? (
             <div className="text-rose-700 bg-rose-50 border border-rose-200 rounded-md p-3">{progressError}</div>
           ) : !progressTask ? (
-            <div className="text-sm text-muted-foreground">ยังไม่มีการสร้างงานสำหรับรายงานนี้</div>
+            <div className="text-center py-8">
+              <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">ยังไม่มีการสร้างงานสำหรับรายงานนี้</p>
+            </div>
           ) : (
             <div className="space-y-5">
               {/* Stepper */}
@@ -573,10 +604,11 @@ const Reports = () => {
                     <CardTitle className="text-base">รายละเอียดงาน</CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm space-y-1">
-                    <div><span className="text-muted-foreground">ผู้รับผิดชอบ:</span> {progressTask.user || '—'}</div>
-                    <div><span className="text-muted-foreground">องค์กร:</span> {progressTask.org_name || '—'}</div>
-                    <div><span className="text-muted-foreground">อาคาร:</span> {progressTask.building_name || '—'}</div>
-                    <div><span className="text-muted-foreground">ลิฟต์:</span> {progressTask.lift_id || '—'}</div>
+                    <div><span className="text-muted-foreground">ผู้รับผิดชอบ:</span>  {progressTask.user || '—'}</div>
+                    <div><span className="text-muted-foreground">องค์กร:</span>  {progressTask.org_name || '—'}</div>
+                    <div><span className="text-muted-foreground">อาคาร:</span>  {progressTask.building_name || '—'}</div>
+                    <div>
+                      <span className="text-muted-foreground">ลิฟต์:</span>  {progressTask.lift_name || '—'}</div>
                     <div><span className="text-muted-foreground">สถานะปัจจุบัน:</span> <Badge variant="outline" className="capitalize">{progressTask.tk_status}</Badge></div>
                     {progressTask.task_start_date && (
                       <div><span className="text-muted-foreground">เริ่มงาน:</span> {progressTask.task_start_date}</div>

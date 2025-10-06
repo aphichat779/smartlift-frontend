@@ -16,7 +16,10 @@ import {
   Square,
   SquareCheckBig,
   Monitor,
-  ClipboardList
+  ClipboardList,
+  UserCog,
+  Crown,
+  Factory
 } from "lucide-react";
 import { GiElevator } from "react-icons/gi";
 import { VscOrganization } from "react-icons/vsc";
@@ -46,43 +49,59 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     return "https://via.placeholder.com/150";
   };
 
-  // แยกเมนูสำหรับแต่ละบทบาทเพื่อความชัดเจน
+  /**
+   * ปรับปรุง: แยกเมนูทั้งหมดของแต่ละบทบาทให้เป็นอิสระต่อกัน
+   * โดยจะไม่มีการใช้ commonItems ร่วมกันอีกต่อไป
+   */
   const getMenuItemsByRole = (role) => {
-    const commonItems = [
-      { id: "dashboard", path: "/", icon: LayoutDashboard, label: "Dashboard", exact: true },
-      { id: "monitor", path: "/monitor", icon: Monitor, label: "Lift Monitor", exact: true },
-      { id: "reports", path: "/reports", icon: TbMessageReport, label: "Reports", exact: true },
-      { id: "notifications", path: "/notifications", icon: Bell, label: "Notifications", exact: true },
-    ];
-
-    const adminSpecificItems = [
-      { id: "organizations", path: "/organizations", icon: VscOrganization, label: "Organizations", exact: true },
-      { id: "buildings", path: "/buildings", icon: Building, label: "Buildings", exact: true },
-      { id: "elevators", path: "/elevators", icon: GiElevator, label: "Add Lift", exact: true },
-      { id: "admin-assign", path: "/admin-assign", icon: ClipboardList, label: "Assign Task", exact: true },
-      { id: "admin-users", path: "/admin-users", icon: Users, label: "User Management", exact: true },
-    ];
-
-    const orgAdminSpecificItems = [
-      { id: "organizations", path: "/organizations", icon: VscOrganization, label: "Organizations", exact: true },
-      { id: "buildings", path: "/buildings", icon: Building, label: "Buildings", exact: true },
-      { id: "elevators", path: "/elevators", icon: GiElevator, label: "ADD LIFT", exact: true },
-    ];
-    
-    const technicianSpecificItems = [
-      { id: "my-tasks", path: "/my-tasks", icon: ClipboardList, label: "My Tasks", exact: true },
-    ];
-
     switch (role) {
+      case "super_admin":
+        // รวมเมนูทั้งหมดที่ Super Admin ควรเห็น
+        return [
+          { id: "dashboardsuperadmin", path: "/dashboardsuperadmin", icon: LayoutDashboard, label: "Dashboard", exact: true },
+          { id: "monitor", path: "/monitor", icon: Monitor, label: "Lift Monitor", exact: true },
+          { id: "reports", path: "/reports", icon: TbMessageReport, label: "Reports", exact: true },
+          { id: "notifications", path: "/notifications", icon: Bell, label: "Notifications", exact: true },
+          { id: "organizations", path: "/organizations", icon: VscOrganization, label: "Organizations", exact: true },
+          { id: "buildings", path: "/buildings", icon: Building, label: "Buildings", exact: true },
+          { id: "elevators", path: "/elevators", icon: GiElevator, label: "Add Lift", exact: true },
+          { id: "admin-assign", path: "/admin-assign", icon: ClipboardList, label: "Assign Task", exact: true },
+          { id: "admin-users", path: "/admin-users", icon: Users, label: "User Management", exact: true },
+          { id: "system-settings", path: "/system-settings", icon: Settings, label: "System Settings", exact: true },
+        ];
+
       case "admin":
-        return [...commonItems, ...adminSpecificItems];
-      case "org_admin":
-        return [...commonItems, ...orgAdminSpecificItems];
+        // รวมเมนูทั้งหมดที่ Admin ควรเห็น
+        return [
+          { id: "dashboardadmin", path: "/dashboardadmin", icon: LayoutDashboard, label: "Dashboard", exact: true },
+          { id: "monitor", path: "/monitor", icon: Monitor, label: "Lift Monitor", exact: true },
+          { id: "reports", path: "/reports", icon: TbMessageReport, label: "Reports", exact: true },
+          { id: "notifications", path: "/notifications", icon: Bell, label: "Notifications", exact: true },
+          { id: "buildings", path: "/buildings", icon: Building, label: "Buildings", exact: true },
+          { id: "elevators", path: "/elevators", icon: GiElevator, label: "Add Lift", exact: true },
+          { id: "admin-assign", path: "/admin-assign", icon: ClipboardList, label: "Assign Task", exact: true },
+        ];
+
       case "technician":
-        return [...commonItems, ...technicianSpecificItems];
+        // รวมเมนูทั้งหมดที่ Technician ควรเห็น
+        return [
+          { id: "dashboardtechnician", path: "/dashboardtechnician", icon: LayoutDashboard, label: "Dashboard", exact: true },
+          { id: "monitor", path: "/monitor", icon: Monitor, label: "Lift Monitor", exact: true },
+          { id: "reports", path: "/reports", icon: TbMessageReport, label: "Reports", exact: true },
+          { id: "notifications", path: "/notifications", icon: Bell, label: "Notifications", exact: true },
+          { id: "my-tasks", path: "/my-tasks", icon: ClipboardList, label: "My Tasks", exact: true },
+          { id: "lift-status", path: "/lift-status", icon: Monitor, label: "Lift Status", exact: true },
+        ];
+
       case "user":
       default:
-        return commonItems;
+        // รวมเมนูทั้งหมดที่ User ทั่วไปควรเห็น
+        return [
+          { id: "dashboard", path: "/", icon: LayoutDashboard, label: "Dashboard", exact: true },
+          { id: "monitor", path: "/monitor", icon: Monitor, label: "Lift Monitor", exact: true },
+          { id: "reports", path: "/reports", icon: TbMessageReport, label: "Reports", exact: true },
+          { id: "notifications", path: "/notifications", icon: Bell, label: "Notifications", exact: true },
+        ];
     }
   };
 
@@ -145,12 +164,34 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     );
   };
 
+  // กำหนดสีตามบทบาท
+  const getRoleColor = (role) => {
+    switch (role) {
+      case "super_admin": return "bg-red-500";
+      case "admin": return "bg-blue-500";
+      case "technician": return "bg-green-500";
+      default: return "bg-gray-500";
+    }
+  };
+
+  // กำหนดไอคอนตามบทบาท
+  const getRoleIcon = (role) => {
+    switch (role) {
+      case "super_admin": return Crown;
+      case "admin": return UserCog;
+      case "technician": return Factory;
+      default: return Users;
+    }
+  };
+
+  const RoleIcon = getRoleIcon(user?.role);
+
   return (
     <div className={`bg-white text-gray-900 shadow-lg transition-all duration-300 ease-in-out flex flex-col h-screen fixed top-0 z-50 rounded-r-xl ${isCollapsed ? "w-16" : "w-64"}`}>
       {/* Header */}
       <div className="p-4 flex items-center justify-between border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+          <div className={`w-8 h-8 ${getRoleColor(user?.role)} rounded-lg flex items-center justify-center`}>
             <span className="text-white font-bold text-sm">S</span>
           </div>
           {!isCollapsed && (
@@ -191,8 +232,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                   className="w-8 h-8 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                  <Users className="w-4 h-4 text-gray-500" />
+                <div className={`w-8 h-8 rounded-full ${getRoleColor(user?.role)} flex items-center justify-center`}>
+                  <RoleIcon className="w-4 h-4 text-white" />
                 </div>
               )}
               {!isCollapsed && (

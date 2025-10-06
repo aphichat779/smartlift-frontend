@@ -1,35 +1,112 @@
+// src/services/liftApi.js
 import { apiService } from './api';
 
-// ฟังก์ชันสำหรับดึงสถานะลิฟต์จาก API
-export const fetchElevatorStatus = async (liftId) => {
-  try {
-    // ใช้ request() ของ apiService โดยระบุ endpoint ที่ถูกต้อง
-    const data = await apiService.request(`/endpoints/get_status_db.php?lift_id=${liftId}`);
-    return data;
-  } catch (error) {
-    console.error(`Failed to fetch status for lift ${liftId}:`, error);
-    return null;
-  }
-};
+const API_BASE_URL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost';
 
-// ฟังก์ชันสำหรับดึงคำสั่งเรียกจาก API
-export const fetchPendingCalls = async (liftId) => {
-  try {
-    const data = await apiService.request(`/endpoints/get_call.php?lift_id=${liftId}`);
-    return data.cmd;
-  } catch (error) {
-    console.error(`Error fetching pending calls for lift ${liftId}:`, error);
-    return [];
-  }
-};
+/** ดึงครั้งเดียว (ยังมีไว้ใช้ทั่วไปได้) */
+export async function fetchLatestLifts({ id, ids, debug = false } = {}) {
+  const params = new URLSearchParams();
+  if (id) params.set('id', String(id));
+  if (ids?.length) params.set('ids', ids.join(','));
+  if (debug) params.set('debug', '1');
 
-// ฟังก์ชันสำหรับส่งคำสั่งควบคุมไปยัง API
-export const sendElevatorCommand = async (liftId, params) => {
-  try {
-    const query = new URLSearchParams(params).toString();
-    const data = await apiService.request(`/endpoints/set_status_db.php?lift_id=${liftId}&${query}`);
-    console.log(`Command for lift ${liftId} sent successfully:`, data);
-  } catch (error) {
-    console.error(`Error sending command for lift ${liftId}:`, error);
-  }
-};
+  const url = params.toString()
+    ? `/api/lifts/get_latest_status.php?${params.toString()}`
+    : `/api/lifts/get_latest_status.php`;
+
+  return apiService.request(url, { method: 'GET' });
+}
+
+/**
+ * เรียลไทม์แบบ Polling + ETag
+ * - ยิงซ้ำทุก intervalMs
+ * - ใช้ If-None-Match/ETag → ถ้าไม่เปลี่ยนได้ 304 (ไม่โหลด payload)
+ * - pause อัตโนมัติเมื่อแท็บไม่ active และ resume เมื่อกลับมา
+ * - คืนฟังก์ชัน stop() สำหรับ cleanup
+ */
+export function startRealtimeFromLatest({
+  intervalMs = 1000,
+  id,
+  ids,
+  debug = false,
+  onUpdate, // (payload) => void ; payload = { timestamp, lifts: {...} }
+} = {}) {
+  let timer = null;
+  let etag = null;
+  let running = true;
+  let aborter = null;
+
+  const buildUrl = () => {
+    const p = new URLSearchParams();
+    if (id) p.set('id', String(id));
+    if (ids?.length) p.set('ids', ids.join(','));
+    if (debug) p.set('debug', '1');
+    return `${API_BASE_URL}/api/lifts/get_latest_status.php${p.toString() ? `?${p}` : ''}`;
+  };
+
+  const tick = async () => {
+    try {
+      aborter?.abort();
+      aborter = new AbortController();
+
+      const headers = {};
+      if (etag) headers['If-None-Match'] = etag;
+
+      const res = await fetch(buildUrl(), { headers, signal: aborter.signal });
+      if (res.status === 304) return; // ไม่มีการเปลี่ยน
+
+      etag = res.headers.get('ETag') || etag;
+      const data = await res.json();
+      if (data?.lifts) onUpdate?.(data);
+    } catch (e) {
+      if (e?.name !== 'AbortError') console.error('poll error', e);
+    }
+  };
+
+  const scheduleNext = () => {
+    if (!running) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      if (!document.hidden) await tick();
+      scheduleNext();
+    }, intervalMs);
+  };
+
+  const handleVisibility = () => {
+    if (document.hidden) {
+      clearTimeout(timer); // pause polling
+    } else {
+      // resume ทันทีเมื่อกลับมา
+      tick().finally(scheduleNext);
+    }
+  };
+
+  document.addEventListener('visibilitychange', handleVisibility);
+  // ยิงครั้งแรกทันที แล้วเริ่มรอบต่อ ๆ ไป
+  tick().finally(scheduleNext);
+
+  return () => {
+    running = false;
+    document.removeEventListener('visibilitychange', handleVisibility);
+    clearTimeout(timer);
+    aborter?.abort();
+  };
+}
+
+/** ส่งคำสั่งไปยังลิฟต์ */
+export async function sendLiftCommand({ liftId, targetFloor, command = 'GOTO_FLOOR' }) {
+  return apiService.request('/api/lifts/send_command.php', {
+    method: 'POST',
+    body: JSON.stringify({ liftId, targetFloor, command }),
+  });
+}
+
+export async function getLiftById(id) {
+  return apiService.request(`/api/lifts/get_latest_status.php?id=${encodeURIComponent(id)}`, {
+    method: 'GET',
+  });
+}
+
+export async function getAllLifts() {
+  return apiService.request('/api/lifts/get_latest_status.php', { method: 'GET' });
+}

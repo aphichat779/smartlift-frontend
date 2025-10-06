@@ -18,11 +18,11 @@ import {
   Upload,
   Eye,
   Hammer,
-  FlaskConical,
+  Calendar,
 } from "lucide-react";
 
 /* ---------- helpers: สถานะเป็นคำล้วน ---------- */
-const allowed = ["assign", "preparing", "progress", "test", "complete"];
+const allowed = ["assign", "preparing", "progress", "complete"];
 const normalizeStatus = (v) => (allowed.includes(String(v)) ? String(v) : "assign");
 
 const labelOf = (st) => {
@@ -30,7 +30,6 @@ const labelOf = (st) => {
   if (s === "assign") return "รอรับงาน";
   if (s === "preparing") return "เตรียมการ";
   if (s === "progress") return "กำลังดำเนินการ";
-  if (s === "test") return "ทดสอบ";
   if (s === "complete") return "เสร็จสิ้น";
   return s;
 };
@@ -40,7 +39,6 @@ const badgeClassOf = (st) => {
   if (s === "assign") return "bg-amber-100 text-amber-700";
   if (s === "preparing") return "bg-purple-100 text-purple-700";
   if (s === "progress") return "bg-blue-100 text-blue-700";
-  if (s === "test") return "bg-cyan-100 text-cyan-700";
   if (s === "complete") return "bg-emerald-100 text-emerald-700";
   return "bg-slate-100 text-slate-700";
 };
@@ -67,7 +65,6 @@ const steps = [
   { key: "assign", label: "assign" },
   { key: "preparing", label: "preparing" },
   { key: "progress", label: "progress" },
-  { key: "test", label: "test" },
   { key: "complete", label: "complete" },
 ];
 const stepIndex = (st) => {
@@ -78,7 +75,7 @@ const stepIndex = (st) => {
 const Stepper = ({ current }) => {
   const idx = stepIndex(current);
   return (
-    <div className="flex items-center gap-3 py-3 px-10 rounded-md bg-slate-800 text-white">
+    <div className="flex items-center gap-3 py-3 px-25 rounded-md bg-slate-800 text-white">
       {steps.map((step, i) => {
         const done = i <= idx;
         return (
@@ -194,6 +191,8 @@ export default function TechnicianTasks() {
   const [detail, setDetail] = useState("");
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [expectedEndDate, setExpectedEndDate] = useState("");
 
   // เลือกสถานะที่จะอัปเดต (ค่าเริ่มต้น)
   const [nextStatus, setNextStatus] = useState("progress");
@@ -246,8 +245,7 @@ export default function TechnicianTasks() {
     let next = "preparing";
     if (cur === "assign") next = "preparing";
     else if (cur === "preparing") next = "progress";
-    else if (cur === "progress") next = "test";
-    else if (cur === "test") next = "complete";
+    else if (cur === "progress") next = "complete";
     else next = cur;
 
     setOpen(true);
@@ -256,6 +254,8 @@ export default function TechnicianTasks() {
     setHistory([]);
     setDetail("");
     setFile(null);
+    setStartDate("");
+    setExpectedEndDate("");
     setNextStatus(next);
 
     // โหลด detail + timeline
@@ -265,6 +265,11 @@ export default function TechnicianTasks() {
         const task = d.data?.task ?? d.task ?? null;
         setInfo(task);
         setHistory(extractTimeline(d));
+        // โหลดข้อมูลวันที่จาก task
+        if (task) {
+          setStartDate(task.start_date || "");
+          setExpectedEndDate(task.expected_end_date || "");
+        }
       }
     } catch (e) {
       console.error("detail error:", e);
@@ -273,22 +278,16 @@ export default function TechnicianTasks() {
 
   // รับงาน → อัปเดตเป็น preparing ทันที แล้วเปิดโมดัล
   const handleAcceptAndOpen = async (row) => {
-    try {
-      const res = await technicianService.updateStatus({
-        tk_id: row.tk_id,
-        tk_status: "preparing",
-        detail: "Technician accepted → preparing.",
-      });
-      if (!res?.success) {
-        alert(res?.message || "รับงานไม่สำเร็จ");
-        return;
-      }
-      await fetchTasks();
-      openModalFor({ ...row, tk_status: "preparing", tk_status_text: "preparing" });
-    } catch (e) {
-      console.error(e);
-      alert("เกิดข้อผิดพลาดในการรับงาน");
-    }
+    // เปิดโมดัลเพื่อให้กรอกข้อมูลวันที่ก่อน
+    setOpen(true);
+    setActiveTask({ ...row, tk_status: "assign" });
+    setInfo(null);
+    setHistory([]);
+    setDetail("");
+    setFile(null);
+    setStartDate("");
+    setExpectedEndDate("");
+    setNextStatus("preparing");
   };
 
   const handleOpenUpdate = (row) => openModalFor(row);
@@ -296,13 +295,27 @@ export default function TechnicianTasks() {
   // อัปเดตสถานะหลัก
   const submitUpdate = async () => {
     if (!activeTask) return;
+    
+    // ถ้าเป็นการรับงาน (จาก assign → preparing) ต้องมีวันที่
+    const currentStatus = normalizeStatus(activeTask?.tk_status || activeTask?.tk_status_text);
+    const next = normalizeStatus(nextStatus);
+    
+    if (currentStatus === "assign" && next === "preparing") {
+      if (!startDate || !expectedEndDate) {
+        alert("กรุณาระบุวันเริ่มงานและวันคาดว่าจะเสร็จ");
+        return;
+      }
+    }
+    
     try {
       setSaving(true);
       const res = await technicianService.updateStatus({
         tk_id: activeTask.tk_id,
-        tk_status: normalizeStatus(nextStatus),
+        tk_status: next,
         detail: detail || "",
         file: file || undefined,
+        start_date: startDate || undefined,
+        expected_end_date: expectedEndDate || undefined,
       });
       if (res?.success) {
         setOpen(false);
@@ -354,7 +367,7 @@ export default function TechnicianTasks() {
     }
   };
 
-  // ⭐ ปุ่ม “บันทึก” เดียว — ตัดสินใจอัตโนมัติ
+  // ⭐ ปุ่ม "บันทึก" เดียว — ตัดสินใจอัตโนมัติ
   const currentStatus = normalizeStatus(activeTask?.tk_status || activeTask?.tk_status_text);
   const isStatusChange = normalizeStatus(nextStatus) !== currentStatus;
   const handleSave = async () => {
@@ -431,7 +444,7 @@ export default function TechnicianTasks() {
                     {tasks.map((t) => {
                       const st = normalizeStatus(t.tk_status || t.tk_status_text);
                       const isAssign = st === "assign";
-                      const isUpdating = ["preparing", "progress", "test"].includes(st);
+                      const isUpdating = ["preparing", "progress"].includes(st);
                       const isDone = st === "complete";
 
                       return (
@@ -482,7 +495,7 @@ export default function TechnicianTasks() {
                   {tasks.map((t) => {
                     const st = normalizeStatus(t.tk_status || t.tk_status_text);
                     const isAssign = st === "assign";
-                    const isUpdating = ["preparing", "progress", "test"].includes(st);
+                    const isUpdating = ["preparing", "progress"].includes(st);
                     const isDone = st === "complete";
 
                     return (
@@ -559,6 +572,12 @@ export default function TechnicianTasks() {
                 <div>องค์กร: <b>{info?.org_name || activeTask?.org_name || "-"}</b></div>
                 <div>อาคาร: <b>{info?.building_name || activeTask?.building_name || "-"}</b></div>
                 <div>ลิฟต์: <b>{info?.lift_name || activeTask?.lift_name || activeTask?.lift_id || "-"}</b></div>
+                {info?.start_date && (
+                  <div>วันเริ่มงาน: <b>{info.start_date}</b></div>
+                )}
+                {info?.expected_end_date && (
+                  <div>วันคาดว่าจะเสร็จ: <b>{info.expected_end_date}</b></div>
+                )}
                 <div className="pt-2">รายละเอียดแจ้งซ่อม:</div>
                 <div className="bg-gray-50 rounded p-2 text-gray-700 whitespace-pre-wrap">
                   {info?.report_detail || activeTask?.report_detail || activeTask?.tk_data || "-"}
@@ -629,22 +648,42 @@ export default function TechnicianTasks() {
                   <Wrench className="w-4 h-4" /> progress
                 </Button>
                 <Button
-                  variant={nextStatus === "test" ? "default" : "outline"}
-                  onClick={() => setNextStatus("test")}
-                  className="gap-1"
-                >
-                  <FlaskConical className="w-4 h-4" /> test
-                </Button>
-                <Button
                   onClick={() => setNextStatus("complete")}
                   className={`gap-1 ${nextStatus === "complete" ? "" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
                 >
-                  <CheckCircle2 className="w-4 h-4" /> ปิดงาน (complete)
+                  <CheckCircle2 className="w-4 h-4" /> complete
                 </Button>
               </div>
 
               <Input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </div>
+            
+            {/* ฟิลด์วันที่สำหรับการรับงาน */}
+            {currentStatus === "assign" && nextStatus === "preparing" && (
+              <div className="grid md:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
+                    <Calendar className="w-4 h-4" /> วันเริ่มงาน *
+                  </label>
+                  <Input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={(e) => setStartDate(e.target.value)} 
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
+                    <Calendar className="w-4 h-4" /> วันคาดว่าจะเสร็จ *
+                  </label>
+                  <Input 
+                    type="date" 
+                    value={expectedEndDate} 
+                    onChange={(e) => setExpectedEndDate(e.target.value)} 
+                  />
+                </div>
+              </div>
+            )}
+            
             <Textarea
               className="mt-3"
               placeholder="ใส่รายละเอียดที่ดำเนินการ..."

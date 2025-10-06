@@ -237,7 +237,7 @@ const Organizations = () => {
                       <TableRow key={org.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell className="font-medium">{org.org_name}</TableCell>
-                        <TableCell>{org.description || "-"}</TableCell>
+                        <TableCell className="whitespace-normal max-w-xs">{org.description || "-"}</TableCell>
                         <TableCell className="flex justify-center gap-2">
                           <Button size="sm" variant="secondary" onClick={() => openModal(org)}>
                             <Edit className="w-4 h-4 mr-1" /> แก้ไข

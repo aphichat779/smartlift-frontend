@@ -485,7 +485,7 @@ const Elevators = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {/* Filter Section */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-wrap items-end gap-4"> 
                         <div className="space-y-2">
                             <Label htmlFor="org-filter">กรองตามองค์กร:</Label>
                             <Select
@@ -493,7 +493,7 @@ const Elevators = () => {
                                 value={filterOrgId}
                                 onValueChange={handleOrgFilterChange}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="w-[180px]"> 
                                     <SelectValue placeholder="-- แสดงทั้งหมด --" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -506,7 +506,7 @@ const Elevators = () => {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2"> 
                             <Label htmlFor="building-filter">กรองตามอาคาร:</Label>
                             <Select
                                 id="building-filter"
@@ -514,7 +514,7 @@ const Elevators = () => {
                                 onValueChange={handleBuildingFilterChange}
                                 disabled={!filterOrgId || filterOrgId === 'all'}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="w-[180px]"> 
                                     <SelectValue placeholder="-- แสดงทั้งหมด --" />
                                 </SelectTrigger>
                                 <SelectContent>

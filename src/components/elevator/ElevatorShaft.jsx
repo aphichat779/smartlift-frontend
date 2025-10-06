@@ -1,9 +1,19 @@
 // src/components/elevator/ElevatorShaft.jsx
-import React, { useMemo } from "react";
-import { motion, useTransform, useMotionValue } from "framer-motion";
+
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import {
+  motion,
+  useTransform,
+  useMotionValue,
+  useMotionValueEvent,
+  animate,
+} from "framer-motion";
 import { ArrowUp, ArrowDown, Square } from "lucide-react";
+
+import { checkLevel } from "@/utils/legacyLiftParser"; 
 import { getFloorIndices, getFloorLabel } from "@/utils/liftUtils";
 
+// (ฟังก์ชัน getDirectionIcon คงเดิม)
 const getDirectionIcon = (direction) => {
   switch (direction) {
     case "UP":
@@ -15,52 +25,170 @@ const getDirectionIcon = (direction) => {
   }
 };
 
-/**
- * Props:
- * - st: { floorLabels, max_level, floorPosition, moving, door, doorAnimating, direction }
- * - carPosMV?: MotionValue<number>  (ไม่บังคับ; ถ้าไม่ส่งมา จะ fallback เป็น motion value ภายใน)
- */
-export default function ElevatorShaft({ st, carPosMV }) {
+// ----------------------------------------------------------------------
+// 1. Component สำหรับแสดงสถานะการเรียก (Call Status Arrows) 
+// ----------------------------------------------------------------------
+const CallStatusIndicator = React.memo(({ st, idx, floorHeight }) => {
+  const isUpCalled = checkLevel(st?.up_status_hex, idx);
+  const isDownCalled = checkLevel(st?.down_status_hex, idx);
+  const hasCall = isUpCalled || isDownCalled;
+
+  return (
+    <div
+      className="flex items-center justify-end" 
+      style={{ height: `${floorHeight}px` }}
+    >
+      {hasCall && (
+        <div className="flex flex-col items-center">
+          {isUpCalled && (
+            <ArrowUp className="w-3 h-3 text-green-500 animate-pulse stroke-5" />
+          )}
+          {isDownCalled && (
+            <ArrowDown className="w-3 h-3 text-red-500 animate-pulse stroke-5" />
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
+// ----------------------------------------------------------------------
+
+// ----------------------------------------------------------------------
+// 2. Component สำหรับแสดงชื่อชั้นอย่างเดียว (Floor Label)
+// ----------------------------------------------------------------------
+const FloorIndicator = React.memo(({ lbl, isCurrent, floorHeight }) => {
+  const baseClasses = "font-extrabold rounded px-2 py-0.5 transition-all select-none text-gray-700 text-sm";
+  const currentClasses = isCurrent 
+    ? "transform scale-[1.3] text-yellow-400 drop-shadow-[0_0_2px_rgba(0,0,0,0.7)]" 
+    : "";
+    
+  return (
+    <div
+      className="flex items-center justify-end w-12 pl-2" 
+      style={{ height: `${floorHeight}px` }}
+    >
+      <div 
+        className={`${baseClasses} ${currentClasses}`}
+        title={`ชั้น ${lbl}`}
+      >
+        {lbl}
+      </div>
+    </div>
+  );
+});
+// ----------------------------------------------------------------------
+
+
+export default function ElevatorShaft({
+  st,
+  carPosMV,
+  highlightCurrentFloor = true,
+}) {
   const floorHeight = 36; // px ต่อชั้น
-  const cabPixelHeight = 40;
+  const cabPixelHeight = 40; // ความสูงตัวรถ
 
   const indices = getFloorIndices(st);
-  const levels = indices.length || st?.max_level || 1;
+  const levels = Math.max(1, indices.length || st?.max_level || 1);
   const shaftHeight = floorHeight * levels;
 
-  // ✅ Fallback: ถ้าไม่ได้ส่ง carPosMV มา (เช่นจุดเรียกอื่นในแอป)
-  // ให้สร้าง motion value จาก floorPosition ปัจจุบัน
+  // MotionValue หลัก
   const fallbackMV = useMotionValue(st?.floorPosition ?? 1);
   const posMV = carPosMV ?? fallbackMV;
 
-  // map "เลขชั้น" (1..levels, ทศนิยมได้) -> bottom px
-  const carBottomMV = useTransform(
-    posMV,
-    (v) => (Math.max(1, Math.min(levels, v)) - 1) * floorHeight + (floorHeight - cabPixelHeight) / 2
+  // เก็บค่าชั้นก่อนหน้าเพื่อเปรียบเทียบ
+  const lastTargetRef = useRef(posMV.get());
+
+  // 🔥 เคลื่อนไหวเมื่อ floorPosition เปลี่ยน
+  useEffect(() => {
+    const to = Number(st?.floorPosition ?? 1);
+    if (!Number.isFinite(to)) return;
+
+    const from = posMV.get();
+    const delta = Math.abs(to - from);
+
+    if (Math.abs(to - lastTargetRef.current) < 0.001) return;
+
+    lastTargetRef.current = to;
+
+    const duration = 0.5 + delta * 0.8;
+
+    animate(posMV, to, {
+      type: "tween",
+      ease: "easeInOut",
+      duration,
+    });
+  }, [st?.floorPosition, posMV]);
+
+  // แปลงค่าชั้น -> พิกเซลของ bottom รถลิฟต์
+  const carBottomMV = useTransform(posMV, (v) => {
+    const clamped = Math.max(1, Math.min(levels, v));
+    return (
+      (clamped - 1) * floorHeight + (floorHeight - cabPixelHeight) / 2
+    );
+  });
+
+  // ===== แสดงเลขชั้นปัจจุบันแบบเรียลไทม์ =====
+  const clampLevel = (v) => Math.max(1, Math.min(levels, v));
+  const [currentLevel, setCurrentLevel] = useState(() =>
+    Math.round(clampLevel(posMV.get?.() ?? (st?.floorPosition ?? 1)))
   );
 
+  useMotionValueEvent(posMV, "change", (v) => {
+    const lv = Math.round(clampLevel(v));
+    setCurrentLevel((prev) => (lv !== prev ? lv : prev));
+  });
+
+  // ===== สร้างรายการเลขชั้น =====
   const floorsList = useMemo(
     () =>
       indices.map((idx) => {
         const lbl = getFloorLabel(st, idx);
+        const isCurrent =
+          highlightCurrentFloor && Number(idx) === Number(currentLevel);
         return (
-          <div key={idx} className="flex items-center gap-2" style={{ height: `${floorHeight}px` }}>
-            <div className="font-extrabold text-gray-700 text-sm">{lbl}</div>
-          </div>
+          <FloorIndicator 
+            key={idx}
+            lbl={lbl}
+            isCurrent={isCurrent}
+            floorHeight={floorHeight}
+          />
         );
       }),
-    [indices, st]
+    [indices, st, highlightCurrentFloor, currentLevel]
   );
 
+  // ===== Render =====
   return (
-    <div className="w-full max-w-sm mx-auto p-4 bg-white rounded-lg shadow-md">
-      <div className="flex justify-between items-start gap-4 relative">
-        {/* หมายเลขชั้น */}
-        <div className="flex flex-col-reverse justify-between" style={{ height: `${shaftHeight}px` }}>
+    <div className="w-full max-w-sm mx-auto px-2 py-4 bg-white rounded-lg shadow-md border border-gray-400">
+      {/* 💥 ปรับแก้: ลด padding หลักของ Component จาก p-4 เป็น px-2 py-4 */}
+      
+      {/* ใช้ gap-0 เพื่อให้ลูกศรและตัวเลขชิดกันที่สุด */}
+      <div className="flex justify-between items-start gap-0 relative">
+        
+        {/* 1. คอลัมน์ Call Status Arrows (ชิดซ้ายสุด) */}
+        <div
+          className="flex flex-col-reverse justify-between w-8"
+          style={{ height: `${shaftHeight}px` }}
+        >
+          {indices.map((idx) => (
+            <CallStatusIndicator 
+              key={`call-${idx}`}
+              st={st}
+              idx={idx}
+              floorHeight={floorHeight}
+            />
+          ))}
+        </div>
+        
+        {/* 2. คอลัมน์หมายเลขชั้น (ตรงกลาง) */}
+        <div
+          className="flex flex-col-reverse justify-between"
+          style={{ height: `${shaftHeight}px` }}
+        >
           {floorsList}
         </div>
 
-        {/* ปล่องลิฟต์ */}
+        {/* 3. ปล่องลิฟต์ (คอลัมน์ขวาสุด) */}
         <div
           className="relative w-40 flex-grow bg-gray-200 rounded-lg border-2 border-gray-300 overflow-hidden"
           style={{ height: `${shaftHeight}px` }}
@@ -68,35 +196,50 @@ export default function ElevatorShaft({ st, carPosMV }) {
           {/* เส้นแบ่งชั้น */}
           <div className="absolute inset-y-0 left-0 w-full flex flex-col-reverse">
             {indices.map((idx) => (
-              <div key={idx} className="w-full border-t border-gray-300" style={{ height: `${floorHeight}px` }} />
+              <div
+                key={idx}
+                className="w-full border-t border-gray-300"
+                style={{ height: `${floorHeight}px` }}
+              />
             ))}
           </div>
 
-          {/* รถลิฟต์ (ขยับด้วย motion value; ไม่ re-render ทุกเฟรม) */}
+          {/* รถลิฟต์ */}
           <motion.div
             className="absolute left-1/2 -translate-x-1/2 w-16 h-10"
-            style={{ bottom: carBottomMV, zIndex: 10, willChange: "transform,bottom" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            style={{
+              bottom: carBottomMV,
+              zIndex: 10,
+              willChange: "transform,bottom",
+            }}
           >
             <div
-              className={`w-full h-full rounded border-2 transition-colors ${
-                st?.moving ? "bg-purple-600 border-purple-400 shadow-lg shadow-purple-500/50" : "bg-blue-600 border-blue-400"
-              }`}
+              className={`w-full h-full rounded border-2 transition-colors ${st?.moving
+                  ? "bg-purple-600 border-purple-400 shadow-lg shadow-purple-500/50"
+                  : "bg-blue-600 border-blue-400"
+                }`}
             >
               <div className="relative h-full flex items-center">
+                {/* ประตูลิฟต์ซ้าย */}
                 <div
-                  className={`w-1/2 h-full bg-blue-900 border-r-2 border-blue-700 transition-transform duration-500 transform ${
-                    st?.door === "OPEN" ? "-translate-x-full" : "translate-x-0"
-                  } ${st?.doorAnimating && st?.door === "OPEN" ? "animate-pulse" : ""}`}
+                  className={`w-1/2 h-full bg-blue-900 border-r-2 border-blue-700 transition-transform duration-500 transform ${st?.door === "OPEN"
+                      ? "-translate-x-full"
+                      : "translate-x-0"
+                    } ${st?.doorAnimating && st?.door === "OPEN"
+                      ? "animate-pulse"
+                      : ""
+                    }`}
                 />
+                {/* ประตูลิฟต์ขวา */}
                 <div
-                  className={`w-1/2 h-full bg-blue-900 border-l-2 border-blue-700 transition-transform duration-500 transform ${
-                    st?.door === "OPEN" ? "translate-x-full" : "translate-x-0"
-                  } ${st?.doorAnimating && st?.door === "OPEN" ? "animate-pulse" : ""}`}
+                  className={`w-1/2 h-full bg-blue-900 border-l-2 border-blue-700 transition-transform duration-500 transform ${st?.door === "OPEN"
+                      ? "translate-x-full"
+                      : "translate-x-0"
+                    } ${st?.doorAnimating && st?.door === "OPEN"
+                      ? "animate-pulse"
+                      : ""
+                    }`}
                 />
-              </div>
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                {getDirectionIcon(st?.direction)}
               </div>
             </div>
           </motion.div>

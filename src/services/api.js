@@ -7,7 +7,10 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+    // แก้ไข: ตรวจสอบและเพิ่ม / ที่จุดเริ่มต้นของ endpoint หากไม่มี
+    const cleanedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${this.baseURL}${cleanedEndpoint}`;
+    
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -30,6 +33,7 @@ class ApiService {
       const response = await fetch(url, config);
 
       if (response.status === 401) {
+        // จัดการกรณี Token หมดอายุ
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
         throw new Error('AUTH_EXPIRED');
@@ -56,17 +60,33 @@ class ApiService {
   }
 
   // ==========================
-  // Dashboard
+  // Generic Methods (เพิ่มเข้ามาเพื่อรองรับ DashboardService)
   // ==========================
-  async getDashboard(section) {
-    const ep = section
-      ? `/api/dashboard/dashboard.php?section=${encodeURIComponent(section)}`
-      : `/api/dashboard/dashboard.php`;
-    return this.request(ep, { method: 'GET' });
+  /**
+   * ดำเนินการ GET request ไปยัง endpoint ที่ระบุ
+   * @param {string} endpoint - URL ของ API endpoint (เช่น /api/dashboard/...)
+   */
+  async get(endpoint) {
+    // ใช้เมธอด request หลัก โดย method เป็น GET โดยปริยาย
+    return this.request(endpoint);
+  }
+
+  async post(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+  
+  async put(endpoint, data) {
+    return this.request(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   }
 
   // ==========================
-  // Auth & Profile
+  // Auth & Profile (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
   // ==========================
   async register(userData) {
     return this.request('/api/auth/register', {
@@ -103,7 +123,7 @@ class ApiService {
   }
 
   // ==========================
-  // 2FA
+  // 2FA (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
   // ==========================
   async setup2FA() {
     return this.request('/api/2fa/setup', { method: 'POST' });
@@ -145,7 +165,7 @@ class ApiService {
   }
 
   // ==========================
-  // Organizations
+  // Organizations (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
   // ==========================
   async getOrganizations() {
     return this.request('/api/elevator/organizations');
@@ -176,7 +196,7 @@ class ApiService {
   }
 
   // ==========================
-  // Buildings
+  // Buildings (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
   // ==========================
   async getBuildings(org_id = null) {
     const endpoint = org_id
@@ -210,7 +230,7 @@ class ApiService {
   }
 
   // ==========================
-  // Elevators
+  // Elevators (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
   // ==========================
   async getElevators(org_id = null, building_id = null) {
     let endpoint = '/api/elevator/lifts';
@@ -242,7 +262,7 @@ class ApiService {
   }
 
   // ==========================
-  // Reports
+  // Reports (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
   // ==========================
   async getReports(org_id = null) {
     let endpoint = '/api/work/reports.php';
@@ -284,7 +304,7 @@ class ApiService {
   }
 
   // ==========================
-  // Admin Users
+  // Admin Users (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
   // ==========================
   async getUsers(page = 1, limit = 20) {
     // ✅ backend ใช้ users.php

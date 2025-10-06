@@ -1,6 +1,6 @@
 // src/components/AdminUserManagement.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '../../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,24 +58,49 @@ const asNum = (v, d = 0) => {
 
 const roleLabel = (role) => {
   switch (role) {
+    case 'super_admin': return 'ผู้ดูแลระบบสูงสุด';
     case 'admin': return 'ผู้ดูแลระบบ';
-    case 'org_admin': return 'ผู้ดูแลองค์กร';
     case 'technician': return 'ช่างเทคนิค';
     default: return 'ผู้ใช้';
   }
 };
 const roleBadgeVariant = (role) => {
+  if (role === 'super_admin') return 'destructive';
   if (role === 'admin') return 'default';
-  if (role === 'org_admin') return 'outline';
+  if (role === 'technician') return 'outline';
   return 'secondary';
 };
 
-const UpdateUserForm = ({ user, organizations, onUpdate }) => {
+const UpdateUserForm = ({ user, organizations, currentUserRole, onUpdate }) => {
   const [role, setRole] = useState(user.role);
   const [orgId, setOrgId] = useState(user.org_id);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // กำหนดบทบาทที่อนุญาตตามบทบาทของผู้ใช้ปัจจุบัน
+  const getAvailableRoles = useCallback(() => {
+    if (currentUserRole === 'super_admin') {
+      return [
+        { value: 'user', label: 'ผู้ใช้' },
+        { value: 'technician', label: 'ช่างเทคนิค' },
+        { value: 'admin', label: 'ผู้ดูแลระบบ' },
+        { value: 'super_admin', label: 'ผู้ดูแลระบบสูงสุด' }
+      ];
+    } else if (currentUserRole === 'admin') {
+      return [
+        { value: 'user', label: 'ผู้ใช้' },
+        { value: 'technician', label: 'ช่างเทคนิค' },
+        { value: 'admin', label: 'ผู้ดูแลระบบ' }
+      ];
+    }
+    return [
+      { value: 'user', label: 'ผู้ใช้' },
+      { value: 'technician', label: 'ช่างเทคนิค' }
+    ];
+  }, [currentUserRole]);
+
+  const availableRoles = useMemo(() => getAvailableRoles(), [getAvailableRoles]);
 
   const handleUpdate = async () => {
     setLoading(true);
@@ -128,27 +153,28 @@ const UpdateUserForm = ({ user, organizations, onUpdate }) => {
             <SelectValue placeholder="เลือกบทบาท" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="user">ผู้ใช้</SelectItem>
-            <SelectItem value="technician">ช่างเทคนิค</SelectItem>
-            <SelectItem value="org_admin">ผู้ดูแลองค์กร</SelectItem>
-            <SelectItem value="admin">ผู้ดูแลระบบ</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="org_id">องค์กร</Label>
-        <Select value={orgId?.toString()} onValueChange={setOrgId} disabled={loading}>
-          <SelectTrigger>
-            <SelectValue placeholder="เลือกองค์กร" />
-          </SelectTrigger>
-          <SelectContent>
-            {organizations.map(org => (
-              <SelectItem key={org.id} value={org.id.toString()}>{org.org_name}</SelectItem>
+            {availableRoles.map(r => (
+              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
+
+      {currentUserRole === 'super_admin' && (
+        <div className="space-y-2">
+          <Label htmlFor="org_id">องค์กร</Label>
+          <Select value={orgId?.toString()} onValueChange={setOrgId} disabled={loading}>
+            <SelectTrigger>
+              <SelectValue placeholder="เลือกองค์กร" />
+            </SelectTrigger>
+            <SelectContent>
+              {organizations.map(org => (
+                <SelectItem key={org.id} value={org.id.toString()}>{org.org_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <DialogFooter>
         <Button onClick={handleUpdate} disabled={loading || (role === user.role && orgId === user.org_id)}>
@@ -171,24 +197,24 @@ const AdminUserManagement = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [currentUserRole, setCurrentUserRole] = useState('user');
 
-  const currentUserId = (() => {
+  // ใช้ useMemo แทนการคำนวณในระหว่าง render
+  const currentUserId = useMemo(() => {
     try {
       const raw = localStorage.getItem('user_data');
-      return raw ? JSON.parse(raw).id : null;
+      if (raw) {
+        const userData = JSON.parse(raw);
+        return userData.id;
+      }
+      return null;
     } catch {
       return null;
     }
-  })();
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    fetchData();
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const fetchData = async () => {
+  // ใช้ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ทุกครั้งที่ render
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [usersResponse, orgsResponse] = await Promise.all([
@@ -202,9 +228,10 @@ const AdminUserManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleToggleStatusWithValue = async (user, nextChecked) => {
+  // ใช้ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ทุกครั้งที่ render
+  const handleToggleStatusWithValue = useCallback(async (user, nextChecked) => {
     try {
       await apiService.adminToggleUserStatus(user.id, nextChecked);
       setSuccess(`เปลี่ยนสถานะของ ${user.username} สำเร็จ`);
@@ -213,9 +240,10 @@ const AdminUserManagement = () => {
     } catch (err) {
       setError(err.message || 'ไม่สามารถเปลี่ยนสถานะผู้ใช้ได้');
     }
-  };
+  }, [fetchData]);
 
-  const handleReset2FA = async () => {
+  // ใช้ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ทุกครั้งที่ render
+  const handleReset2FA = useCallback(async () => {
     if (!selectedUser || !resetReason.trim()) {
       setError('กรุณาระบุเหตุผลในการรีเซ็ต 2FA');
       return;
@@ -235,29 +263,57 @@ const AdminUserManagement = () => {
     } finally {
       setResetLoading(false);
     }
-  };
+  }, [selectedUser, resetReason, fetchData]);
 
-  const handleUpdateUser = () => {
+  // ใช้ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ทุกครั้งที่ render
+  const handleUpdateUser = useCallback(() => {
     fetchData();
     setSelectedUser(null);
-  };
+  }, [fetchData]);
 
-  const openResetDialog = (user) => {
+  // ใช้ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ทุกครั้งที่ render
+  const openResetDialog = useCallback((user) => {
     setSelectedUser(user);
     setResetDialogOpen(true);
-  };
+  }, []);
 
-  const getOrgName = (orgId) => {
+  // ใช้ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ทุกครั้งที่ render
+  const getOrgName = useCallback((orgId) => {
     const org = organizations.find(o => o.id === orgId);
     return org ? org.org_name : 'ไม่ระบุ';
-  };
+  }, [organizations]);
 
-  const filteredUsers = users.filter(user =>
-    (user.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.first_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.last_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ((user.email || '') && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // ใช้ useMemo เพื่อป้องกันการคำนวณใหม่ทุกครั้งที่ render
+  const filteredUsers = useMemo(() => {
+    return users.filter(user =>
+      (user.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.first_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.last_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ((user.email || '') && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [users, searchTerm]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    
+    // ดึงข้อมูลผู้ใช้ปัจจุบัน
+    try {
+      const raw = localStorage.getItem('user_data');
+      if (raw) {
+        const userData = JSON.parse(raw);
+        setCurrentUserRole(userData.role || 'user');
+      }
+    } catch {
+      setCurrentUserRole('user');
+    }
+    
+    fetchData();
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [fetchData]);
 
   return (
     <div className="w-full h-full md:p-6">
@@ -432,7 +488,12 @@ const AdminUserManagement = () => {
                                   </Button>
                                 </DialogTrigger>
                                 <DialogContent>
-                                  <UpdateUserForm user={user} organizations={organizations} onUpdate={handleUpdateUser} />
+                                  <UpdateUserForm 
+                                    user={user} 
+                                    organizations={organizations} 
+                                    currentUserRole={currentUserRole}
+                                    onUpdate={handleUpdateUser} 
+                                  />
                                 </DialogContent>
                               </Dialog>
 
