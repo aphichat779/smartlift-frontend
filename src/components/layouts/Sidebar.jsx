@@ -19,8 +19,9 @@ import {
   ClipboardList,
   UserCog,
   Crown,
-  Factory
+  Factory,
 } from "lucide-react";
+import { FaTools } from "react-icons/fa";
 import { GiElevator } from "react-icons/gi";
 import { VscOrganization } from "react-icons/vsc";
 import { TbMessageReport } from "react-icons/tb";
@@ -61,10 +62,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           { id: "dashboardsuperadmin", path: "/dashboardsuperadmin", icon: LayoutDashboard, label: "Dashboard", exact: true },
           { id: "monitor", path: "/monitor", icon: Monitor, label: "Lift Monitor", exact: true },
           { id: "reports", path: "/reports", icon: TbMessageReport, label: "Reports", exact: true },
-          { id: "notifications", path: "/notifications", icon: Bell, label: "Notifications", exact: true },
           { id: "organizations", path: "/organizations", icon: VscOrganization, label: "Organizations", exact: true },
           { id: "buildings", path: "/buildings", icon: Building, label: "Buildings", exact: true },
           { id: "elevators", path: "/elevators", icon: GiElevator, label: "Add Lift", exact: true },
+          { id: "tools", path: "/tools", icon: FaTools, label: "Tools", exact: true },
           { id: "admin-assign", path: "/admin-assign", icon: ClipboardList, label: "Assign Task", exact: true },
           { id: "admin-users", path: "/admin-users", icon: Users, label: "User Management", exact: true },
           { id: "system-settings", path: "/system-settings", icon: Settings, label: "System Settings", exact: true },
@@ -76,9 +77,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           { id: "dashboardadmin", path: "/dashboardadmin", icon: LayoutDashboard, label: "Dashboard", exact: true },
           { id: "monitor", path: "/monitor", icon: Monitor, label: "Lift Monitor", exact: true },
           { id: "reports", path: "/reports", icon: TbMessageReport, label: "Reports", exact: true },
-          { id: "notifications", path: "/notifications", icon: Bell, label: "Notifications", exact: true },
           { id: "buildings", path: "/buildings", icon: Building, label: "Buildings", exact: true },
           { id: "elevators", path: "/elevators", icon: GiElevator, label: "Add Lift", exact: true },
+          { id: "tools", path: "/tools", icon: FaTools, label: "Tools", exact: true },
           { id: "admin-assign", path: "/admin-assign", icon: ClipboardList, label: "Assign Task", exact: true },
         ];
 
@@ -88,7 +89,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           { id: "dashboardtechnician", path: "/dashboardtechnician", icon: LayoutDashboard, label: "Dashboard", exact: true },
           { id: "monitor", path: "/monitor", icon: Monitor, label: "Lift Monitor", exact: true },
           { id: "reports", path: "/reports", icon: TbMessageReport, label: "Reports", exact: true },
-          { id: "notifications", path: "/notifications", icon: Bell, label: "Notifications", exact: true },
           { id: "my-tasks", path: "/my-tasks", icon: ClipboardList, label: "My Tasks", exact: true },
           { id: "lift-status", path: "/lift-status", icon: Monitor, label: "Lift Status", exact: true },
         ];
@@ -100,7 +100,6 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           { id: "dashboard", path: "/", icon: LayoutDashboard, label: "Dashboard", exact: true },
           { id: "monitor", path: "/monitor", icon: Monitor, label: "Lift Monitor", exact: true },
           { id: "reports", path: "/reports", icon: TbMessageReport, label: "Reports", exact: true },
-          { id: "notifications", path: "/notifications", icon: Bell, label: "Notifications", exact: true },
         ];
     }
   };

@@ -13,7 +13,6 @@ import { ArrowUp, ArrowDown, Square } from "lucide-react";
 import { checkLevel } from "@/utils/legacyLiftParser"; 
 import { getFloorIndices, getFloorLabel } from "@/utils/liftUtils";
 
-// (ฟังก์ชัน getDirectionIcon คงเดิม)
 const getDirectionIcon = (direction) => {
   switch (direction) {
     case "UP":
@@ -59,7 +58,7 @@ const CallStatusIndicator = React.memo(({ st, idx, floorHeight }) => {
 const FloorIndicator = React.memo(({ lbl, isCurrent, floorHeight }) => {
   const baseClasses = "font-extrabold rounded px-2 py-0.5 transition-all select-none text-gray-700 text-sm";
   const currentClasses = isCurrent 
-    ? "transform scale-[1.3] text-yellow-400 drop-shadow-[0_0_2px_rgba(0,0,0,0.7)]" 
+    ? "transform scale-[1.6] text-orange-600 drop-shadow-sm" 
     : "";
     
   return (
@@ -84,8 +83,8 @@ export default function ElevatorShaft({
   carPosMV,
   highlightCurrentFloor = true,
 }) {
-  const floorHeight = 36; // px ต่อชั้น
-  const cabPixelHeight = 40; // ความสูงตัวรถ
+  const floorHeight = 38; // px ต่อชั้น
+  const cabPixelHeight = 45; // ความสูงตัวรถ
 
   const indices = getFloorIndices(st);
   const levels = Math.max(1, indices.length || st?.max_level || 1);
@@ -127,7 +126,7 @@ export default function ElevatorShaft({
     );
   });
 
-  // ===== แสดงเลขชั้นปัจจุบันแบบเรียลไทม์ =====
+  // ===== แสดงเลขชั้นปัจจุบัน =====
   const clampLevel = (v) => Math.max(1, Math.min(levels, v));
   const [currentLevel, setCurrentLevel] = useState(() =>
     Math.round(clampLevel(posMV.get?.() ?? (st?.floorPosition ?? 1)))
@@ -159,15 +158,11 @@ export default function ElevatorShaft({
 
   // ===== Render =====
   return (
-    <div className="w-full max-w-sm mx-auto px-2 py-4 bg-white rounded-lg shadow-md border border-gray-400">
-      {/* 💥 ปรับแก้: ลด padding หลักของ Component จาก p-4 เป็น px-2 py-4 */}
-      
-      {/* ใช้ gap-0 เพื่อให้ลูกศรและตัวเลขชิดกันที่สุด */}
+    <div className="w-full max-w-sm mx-auto px-2 py-2 bg-white rounded-lg shadow-md border">  
       <div className="flex justify-between items-start gap-0 relative">
         
-        {/* 1. คอลัมน์ Call Status Arrows (ชิดซ้ายสุด) */}
         <div
-          className="flex flex-col-reverse justify-between w-8"
+          className="flex flex-col-reverse justify-between w-6"
           style={{ height: `${shaftHeight}px` }}
         >
           {indices.map((idx) => (
@@ -180,7 +175,7 @@ export default function ElevatorShaft({
           ))}
         </div>
         
-        {/* 2. คอลัมน์หมายเลขชั้น (ตรงกลาง) */}
+        {/* 2. คอลัมน์หมายเลขชั้น */}
         <div
           className="flex flex-col-reverse justify-between"
           style={{ height: `${shaftHeight}px` }}
@@ -188,7 +183,7 @@ export default function ElevatorShaft({
           {floorsList}
         </div>
 
-        {/* 3. ปล่องลิฟต์ (คอลัมน์ขวาสุด) */}
+        {/* 3. ปล่องลิฟต์ */}
         <div
           className="relative w-40 flex-grow bg-gray-200 rounded-lg border-2 border-gray-300 overflow-hidden"
           style={{ height: `${shaftHeight}px` }}
@@ -198,7 +193,7 @@ export default function ElevatorShaft({
             {indices.map((idx) => (
               <div
                 key={idx}
-                className="w-full border-t border-gray-300"
+                className="w-full"
                 style={{ height: `${floorHeight}px` }}
               />
             ))}

@@ -31,6 +31,7 @@ import MonitorAll from "./components/pages/MonitorAll";
 import MonitorOverview from "./components/pages/MonitorOverview";
 import ElevatorDetail from "./components/pages/ElevatorDetail";
 import TechnicianTasks from "./components/pages/TechnicianTasks";
+import Tools from "./components/pages/Tools";
 
 import {
   Dialog,
@@ -235,6 +236,7 @@ export default function App() {
         <Route path="/settings" element={<Shell><SettingsPage /></Shell>} />
         <Route path="/reports" element={<Shell><Reports /></Shell>} />
         <Route path="/my-tasks" element={<Shell><TechnicianTasks /></Shell>} />
+        <Route path="/tools" element={<Shell><Tools /></Shell>} />
 
         {/* Monitor pages */}
         <Route path="/monitor" element={<Shell><MonitorAll /></Shell>} />

@@ -1,46 +1,58 @@
 // src/components/layouts/MainLayout.jsx
+import React, { useState, useEffect, useMemo } from "react";
+import Sidebar from "./Sidebar";
+import Header from "./Header";
+import MobileMenu from "./MobileMenu";
+import { useLocation } from "react-router-dom";
 
-import React, { useState, useEffect } from 'react';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import MobileMenu from './MobileMenu';
+const SIDEBAR_EXPANDED_PX = 256; // 16rem
+const SIDEBAR_COLLAPSED_PX = 64;  // 4rem
 
-const MainLayout = ({ children }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export default function MainLayout({ children }) {
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try { return localStorage.getItem("sl:sidebar-collapsed") === "1"; } catch { return false; }
+  });
   const [isMobile, setIsMobile] = useState(false);
+  const { pathname } = useLocation();
+
+  // เส้นทางที่อยากให้เต็มจอ (ไม่บังคับ max width / padding หนา)
+  const fullBleed = useMemo(() => {
+    return pathname.startsWith("/monitor"); // ปรับเพิ่มเส้นทางอื่นได้
+  }, [pathname]);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    window.addEventListener('resize', handleResize);
-    handleResize();
-
-    return () => window.removeEventListener('resize', handleResize);
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    onResize();
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  useEffect(() => {
+    try { localStorage.setItem("sl:sidebar-collapsed", isCollapsed ? "1" : "0"); } catch {}
+  }, [isCollapsed]);
+
+  const desktopPaddingLeft = isCollapsed ? SIDEBAR_COLLAPSED_PX : SIDEBAR_EXPANDED_PX;
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100 md:flex-row">
+    <div className="min-h-dvh bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-800">
       {isMobile ? (
-        <>
+        <div className="flex flex-col min-h-dvh">
           <Header />
-          <main className="flex-1 overflow-auto px-2 pt-[4.4rem] pb-[5rem]">
-            {children}
+          <main className="flex-1 h-dvh overflow-hidden pt-[4.4rem] pb-[5rem]">
+            <div className="h-full overflow-auto px-2">
+              {children}
+            </div>
           </main>
           <MobileMenu />
-        </>
+        </div>
       ) : (
         <>
-          <Sidebar
-            isCollapsed={isCollapsed}
-            setIsCollapsed={setIsCollapsed}
-          />
+          <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
           <main
-            className="flex-1 overflow-auto transition-all duration-300 ease-in-out"
-            style={{ marginLeft: isCollapsed ? '4rem' : '16rem' }}
+            className="h-dvh overflow-hidden transition-[padding] duration-300 ease-in-out"
+            style={{ paddingLeft: desktopPaddingLeft }}
           >
-            <div className="p-8">
+            <div className={`h-full overflow-auto ${fullBleed ? "px-0" : "px-6 md:px-8 py-6"}`}>
               {children}
             </div>
           </main>
@@ -48,6 +60,4 @@ const MainLayout = ({ children }) => {
       )}
     </div>
   );
-};
-
-export default MainLayout;
+}
