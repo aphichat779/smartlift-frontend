@@ -10,14 +10,16 @@ export const technicianService = {
     return apiService.request(`/api/technician/detail.php?tk_id=${tk_id}`, { method: "GET" });
   },
 
-  updateStatus({ tk_id, tk_status, detail, file, start_date, expected_end_date, tools, tools_total_cost }) {
+  // ลบ start_date และ expected_end_date ออกจาก arguments
+  updateStatus({ tk_id, tk_status, detail, file, tools, tools_total_cost }) {
     if (file) {
       const fd = new FormData();
       fd.append("tk_id", String(tk_id));
       fd.append("tk_status", String(tk_status));
       if (detail) fd.append("detail", detail);
-      if (start_date) fd.append("start_date", start_date);
-      if (expected_end_date) fd.append("expected_end_date", expected_end_date);
+      // ลบการแนบ start_date และ expected_end_date
+      // if (start_date) fd.append("start_date", start_date);
+      // if (expected_end_date) fd.append("expected_end_date", expected_end_date);
       if (Array.isArray(tools) && tools.length) fd.append("tools", JSON.stringify(tools));
       if (typeof tools_total_cost === "number") fd.append("tools_total_cost", String(tools_total_cost));
       fd.append("file", file);
@@ -25,7 +27,8 @@ export const technicianService = {
     }
     return apiService.request("/api/technician/update_status.php", {
       method: "POST",
-      body: JSON.stringify({ tk_id, tk_status, detail, start_date, expected_end_date, tools, tools_total_cost }),
+      // ลบ start_date และ expected_end_date ออกจาก JSON body
+      body: JSON.stringify({ tk_id, tk_status, detail, tools, tools_total_cost }),
     });
   },
 

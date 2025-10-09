@@ -1,153 +1,150 @@
+// src/components/auth/LoginForm.jsx
+
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '../../contexts/AuthContext'; // (สำคัญ) โปรดตรวจสอบ path ให้ถูกต้อง
 import { Eye, EyeOff, Loader2, Shield } from 'lucide-react';
+import { motion } from 'framer-motion'; // <-- Import framer-motion
 
-const LoginForm = ({ onRequire2FA, onSwitchToRegister, onSwitchToReset }) => {
-  const { login } = useAuth();
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+export default function LoginForm({ onRequire2FA, onSwitchToRegister, onSwitchToReset }) {
+  const { login } = useAuth();
+  const [formData, setFormData] = useState({ username: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-    setError('');
-  };
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const result = await login(formData);
+      if (result.requires2FA) {
+        // ส่งไปหน้า 2FA (Component แม่เป็นผู้จัดการ)
+        onRequire2FA(); 
+      }
+      // หากไม่ต้องใช้ 2FA, AuthProvider จะ redirect อัตโนมัติ
+    } catch (err) {
+      setError(err.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    try {
-      const result = await login(formData);
-      
-      if (result.requires2FA) {
-        onRequire2FA(result.tempToken);
-      }
-      // If no 2FA required, user will be automatically redirected by App component
-    } catch (error) {
-      setError(error.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
-    } finally {
-      setLoading(false);
-    }
-  };
+  return (
+    <div className="flex items-center justify-center min-h-screen p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-slate-100 to-slate-200">
+      {/* Main Card with entrance animation */}
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-md mx-auto p-8 bg-white/85 backdrop-blur shadow-[0_12px_30px_-12px_rgba(2,6,23,0.25)] ring-1 ring-slate-200 rounded-2xl"
+      >
+        
+        <div className="text-center">
+          {/* Icon with a subtle pop-in animation */}
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.3, type: "spring", stiffness: 200 }}
+            className="inline-block p-4 bg-blue-100 rounded-full"
+          >
+            <Shield className="h-10 w-10 text-blue-600" strokeWidth={1.5} />
+          </motion.div>
+          <h1 className="text-2xl font-bold text-slate-900 mt-4">เข้าสู่ระบบ</h1>
+          <p className="text-slate-500 mt-1">ยินดีต้อนรับ, กรุณากรอกข้อมูลเพื่อใช้งาน</p>
+        </div>
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Shield className="h-8 w-8 text-primary" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl text-center">เข้าสู่ระบบ</CardTitle>
-          <CardDescription className="text-center">
-            กรุณาใส่ข้อมูลเพื่อเข้าสู่ระบบ SmartLift
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="username">ชื่อผู้ใช้</Label>
-              <Input
-                id="username"
-                name="username"
-                type="text"
-                value={formData.username}
-                onChange={handleChange}
-                placeholder="กรุณาใส่ชื่อผู้ใช้"
-                required
-                disabled={loading}
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm text-center text-red-600 bg-red-50 p-3 rounded-lg"
+            >
+              {error}
+            </motion.div>
+          )}
+          
+          <div className="space-y-4">
+            {/* --- Username Input --- */}
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-1">
+                ชื่อผู้ใช้ หรือ อีเมล
+              </label>
+              <input
+                id="username" name="username" type="text"
+                value={formData.username} onChange={handleChange}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                required disabled={loading}
+              />
+            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">รหัสผ่าน</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="กรุณาใส่รหัสผ่าน"
-                  required
-                  disabled={loading}
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={loading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
+            {/* --- Password Input --- */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
+                รหัสผ่าน
+              </label>
+              <div className="relative">
+                <input
+                  id="password" name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password} onChange={handleChange}
+                  className="w-full px-3 py-2.5 pr-10 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  required disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-slate-600 transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
+                  aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+              <div className="text-right mt-1">
+                <button type="button" onClick={onSwitchToReset} className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
+                  ลืมรหัสผ่าน / 2FA?
+                </button>
+              </div>
+            </div>
+          </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  กำลังเข้าสู่ระบบ...
-                </>
-              ) : (
-                'เข้าสู่ระบบ'
-              )}
-            </Button>
-
-            <div className="text-center space-y-2">
-              <Button
-                type="button"
-                variant="link"
-                onClick={onSwitchToReset}
-                className="text-sm"
-              >
-                ลืมรหัส 2FA?
-              </Button>
-              <div className="text-sm text-muted-foreground">
-                ยังไม่มีบัญชี?{' '}
-                <Button
-                  type="button"
-                  variant="link"
-                  onClick={onSwitchToRegister}
-                  className="p-0 h-auto font-normal"
-                >
-                  สมัครสมาชิก
-                </Button>
-              </div>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default LoginForm;
+          {/* --- Submit Button with hover/tap animations --- */}
+          <motion.button 
+            type="submit" 
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-md hover:opacity-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+            disabled={loading || !formData.username || !formData.password}
+            whileHover={{ scale: 1.01 }} // Subtle grow on hover
+            whileTap={{ scale: 0.99 }} // Slight shrink on click
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>กำลังเข้าสู่ระบบ...</span>
+              </>
+            ) : (
+              'เข้าสู่ระบบ'
+            )}
+          </motion.button>
+        </form>
+        
+        <div className="text-center text-sm text-slate-600 mt-6 border-t border-slate-200 pt-4">
+          ยังไม่มีบัญชี?{' '}
+          <button
+            type="button"
+            onClick={onSwitchToRegister}
+            className="font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+          >
+            สมัครสมาชิกที่นี่
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
