@@ -26,11 +26,11 @@ function Chip({ tone = "slate", active = false, children }) {
     amber: "bg-amber-50 text-amber-700 border-amber-200",
     red: "bg-rose-50 text-rose-700 border-rose-200",
     gray: "bg-slate-50 text-slate-700 border-slate-200",
-    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200", // เพิ่ม indigo สำหรับ Special
+    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200", 
   };
   const dot = active ? "bg-emerald-500" : "bg-slate-400";
   return (
-    <span className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium border ${tones[tone]}`}>
+    <span className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium border ${tones[tone]}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
       {children}
     </span>
@@ -466,59 +466,67 @@ export default function ElevatorDetail() {
 
             {/* SIDEBAR COLUMN */}
             <div className="space-y-6 xl:sticky xl:top-20">
-              <Section
-                title="การควบคุมและทดสอบ"
-                right={
-                  openJobInfo.loading ? (
-                    <span className="text-xs text-slate-400 animate-pulse">กำลังตรวจสอบงาน...</span>
-                  ) : openJobInfo.error ? (
-                    <span className="text-xs text-rose-600">ตรวจสอบงานล้มเหลว</span>
-                  ) : openJobInfo.hasOpenJob ? (
-                    <Chip tone="green" active>มีงานเปิด</Chip>
-                  ) : (
-                    <Chip tone="gray">ยังไม่มีงาน</Chip>
-                  )
-                }
-              >
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { key: "testDoor", label: "ทดสอบเปิด/ปิดประตู" },
-                    { key: "testAlarm", label: "ทดสอบสัญญาณเตือน" },
-                    { key: "maintenanceMode", label: "โหมดบำรุงรักษา" },
-                    { key: "callElevator", label: "ทดสอบเรียกลิฟต์" },
-                    { key: "doorSensor", label: "ทดสอบเซนเซอร์ประตู" },
-                    { key: "resetFault", label: "รีเซ็ตข้อขัดข้อง", danger: true },
-                  ].map((b) => (
-                    <button
-                      key={b.key}
-                      disabled={!canTest}
-                      className={[
-                        "w-full px-4 py-3 rounded-xl ring-1 text-sm transition-colors",
-                        b.danger
-                          ? (canTest
-                              ? "bg-white/85 backdrop-blur ring-rose-200 text-rose-700 hover:bg-rose-50"
-                              : "bg-slate-100 ring-slate-200 text-slate-400 cursor-not-allowed")
-                          : (canTest
-                              ? "bg-white/85 backdrop-blur ring-slate-200 hover:bg-white"
-                              : "bg-slate-100 ring-slate-200 text-slate-400 cursor-not-allowed")
-                      ].join(" ")}
-                      onClick={() => guardAction(b.key)}
-                    >
-                      {b.label}
-                    </button>
-                  ))}
-                </div>
+              {(() => {
+                // 1. แยก Logic การตัดสินใจทั้งหมดออกมาไว้ข้างบนสุด
+                // สร้างตัวแปรสำหรับ UI ในแต่ละสถานะของ openJobInfo
+                let statusComponent;
+                let description;
+                const canTest = !openJobInfo.loading && !openJobInfo.error && openJobInfo.hasOpenJob;
 
-                <p className="text-xs text-slate-500 mt-2 text-center">
-                  {openJobInfo.loading
-                    ? "กำลังตรวจสอบสิทธิ์การทดสอบจากงานที่เปิดอยู่..."
-                    : openJobInfo.error
-                      ? "ไม่สามารถตรวจสอบสถานะงานได้ (จะไม่อนุญาตให้ทดสอบ)"
-                      : openJobInfo.hasOpenJob
-                        ? "อนุญาตให้ทดสอบได้เพราะมีงานเปิดอยู่"
-                        : "ต้องมีงานที่เปิดอยู่ก่อนจึงจะทดสอบลิฟต์ได้"}
-                </p>
-              </Section>
+                if (openJobInfo.loading) {
+                  statusComponent = <span className="text-xs text-slate-400 animate-pulse">กำลังตรวจสอบงาน...</span>;
+                  description = "กำลังตรวจสอบสิทธิ์การทดสอบจากงานที่เปิดอยู่...";
+                } else if (openJobInfo.error) {
+                  statusComponent = <span className="text-xs text-rose-600">ตรวจสอบงานล้มเหลว</span>;
+                  description = "ไม่สามารถตรวจสอบสถานะงานได้ (จะไม่อนุญาตให้ทดสอบ)";
+                } else if (openJobInfo.hasOpenJob) {
+                  statusComponent = <Chip tone="green" active>ON</Chip>;
+                  description = "อนุญาตให้ทดสอบได้เพราะมีงานเปิดอยู่";
+                } else {
+                  statusComponent = <Chip tone="gray">OFF</Chip>;
+                  description = "ต้องมีงานที่เปิดอยู่ก่อนจึงจะทดสอบลิฟต์ได้";
+                }
+
+                // 2. นำตัวแปรที่เตรียมไว้มาใช้ใน JSX ที่สะอาดและอ่านง่าย
+                return (
+                  <Section
+                    title="การควบคุมและทดสอบ"
+                    right={statusComponent} // <-- ใช้ตัวแปรที่ 1
+                  >
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { key: "testDoor", label: "ทดสอบเปิด/ปิดประตู" },
+                        { key: "testAlarm", label: "ทดสอบสัญญาณเตือน" },
+                        { key: "maintenanceMode", label: "โหมดบำรุงรักษา" },
+                        { key: "callElevator", label: "ทดสอบเรียกลิฟต์" },
+                        { key: "doorSensor", label: "ทดสอบเซนเซอร์ประตู" },
+                        { key: "resetFault", label: "รีเซ็ตข้อขัดข้อง", danger: true },
+                      ].map((b) => (
+                        <button
+                          key={b.key}
+                          disabled={!canTest} 
+                          className={[
+                            "w-full px-4 py-3 rounded-xl ring-1 text-sm transition-colors",
+                            b.danger
+                              ? (canTest
+                                ? "bg-white/85 backdrop-blur ring-rose-200 text-rose-700 hover:bg-rose-50"
+                                : "bg-slate-100 ring-slate-200 text-slate-400 cursor-not-allowed")
+                              : (canTest
+                                ? "bg-white/85 backdrop-blur ring-slate-200 hover:bg-white"
+                                : "bg-slate-100 ring-slate-200 text-slate-400 cursor-not-allowed")
+                          ].join(" ")}
+                          onClick={() => guardAction(b.key)}
+                        >
+                          {b.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2 text-center">
+                      {description} 
+                    </p>
+                  </Section>
+                );
+              })()}
 
               {/* แสดงสรุปงานที่เกี่ยวข้อง */}
               <Section

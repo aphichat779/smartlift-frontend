@@ -479,13 +479,16 @@ const Elevators = () => {
                             <CardTitle className="text-xl">การจัดการลิฟต์</CardTitle>
                         </div>
                     </div>
-                    <Button onClick={() => openModal()}>
-                        <Plus className="w-4 h-4 mr-2 " /> Add
+                    <Button
+                        onClick={() => openModal()}
+                        className="bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                        <Plus className="w-4 h-4 mr-2" /> Add
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {/* Filter Section */}
-                    <div className="flex flex-wrap items-end gap-4"> 
+                    <div className="flex flex-wrap items-end gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="org-filter">กรองตามองค์กร:</Label>
                             <Select
@@ -493,7 +496,7 @@ const Elevators = () => {
                                 value={filterOrgId}
                                 onValueChange={handleOrgFilterChange}
                             >
-                                <SelectTrigger className="w-[180px]"> 
+                                <SelectTrigger className="w-[180px]">
                                     <SelectValue placeholder="-- แสดงทั้งหมด --" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -506,7 +509,7 @@ const Elevators = () => {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2"> 
+                        <div className="space-y-2">
                             <Label htmlFor="building-filter">กรองตามอาคาร:</Label>
                             <Select
                                 id="building-filter"
@@ -514,7 +517,7 @@ const Elevators = () => {
                                 onValueChange={handleBuildingFilterChange}
                                 disabled={!filterOrgId || filterOrgId === 'all'}
                             >
-                                <SelectTrigger className="w-[180px]"> 
+                                <SelectTrigger className="w-[180px]">
                                     <SelectValue placeholder="-- แสดงทั้งหมด --" />
                                 </SelectTrigger>
                                 <SelectContent>
