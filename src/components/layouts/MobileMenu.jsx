@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Bell, Building, Users, Settings, HelpCircle, LogOut, Menu, Shield, Monitor, ClipboardList // เพิ่ม ClipboardList ที่นี่
+  LayoutDashboard, Building, Users, Settings, HelpCircle, LogOut, Menu, Shield, Monitor, ClipboardList,
 } from 'lucide-react';
 import { GiElevator } from 'react-icons/gi';
 import { VscOrganization } from "react-icons/vsc";
-import { PiElevatorBold } from "react-icons/pi";
 import { useAuth } from '../../contexts/AuthContext';
 
-const MobileMenu = () => {
+const MobileMenu = ({ hiddenOnScroll = false }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  const isActivePath = (pathname, path, { exact } = { exact: false }) =>
+    exact ? pathname === path : pathname === path || pathname.startsWith(path + "/");
 
   const getProfileImageSrc = (imgUrl) => {
     if (imgUrl) {
@@ -21,27 +23,48 @@ const MobileMenu = () => {
     return 'https://via.placeholder.com/150';
   };
 
-  const menuItems = [
-    { id: 'dashboard', path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'monitor',          path: '/monitor',          icon: Monitor,         label: 'Monitor',           exact: true }, 
-    { id: 'monitor-overview', path: '/monitor/overview', icon: Monitor,         label: 'Monitor Overview',  exact: true }, 
-    { id: 'organizations', path: '/organizations', icon: VscOrganization, label: 'Org' },
-    { id: 'buildings', path: '/buildings', icon: Building, label: 'Buildings' },
-    { id: 'elevators', path: '/elevators', icon: GiElevator, label: 'Elevators' },
-    { id: 'notifications', path: '/notifications', icon: Bell, label: 'Notifications' },
-    ...(user?.role === 'admin' ? [{ id: 'admin-users', path: '/admin-users', icon: Users, label: 'Users' }] : []),
-    // เมนูสำหรับ technician
-    ...(user?.role === 'technician' ? [{ id: 'my-tasks', path: '/my-tasks', icon: ClipboardList, label: 'My Tasks' }] : []),
-  ];
+  const getMenuItemsByRole = (role) => {
+    switch (role) {
+      case "super_admin":
+        return [
+          { id: 'dashboard', path: '/dashboardsuperadmin', icon: LayoutDashboard, label: 'Dashboard' },
+          { id: 'monitor', path: '/monitor', icon: Monitor, label: 'Monitor' },
+          { id: 'organizations', path: '/organizations', icon: VscOrganization, label: 'Orgs' },
+          { id: 'buildings', path: '/buildings', icon: Building, label: 'Buildings' },
+          { id: 'admin-assign', path: '/admin-assign', icon: ClipboardList, label: 'Assign' },
+          { id: 'admin-users', path: '/admin-users', icon: Users, label: 'Users' },
+        ];
+      case "admin":
+        return [
+          { id: 'dashboard', path: '/dashboardadmin', icon: LayoutDashboard, label: 'Dashboard' },
+          { id: 'monitor', path: '/monitor', icon: Monitor, label: 'Monitor' },
+          { id: 'buildings', path: '/buildings', icon: Building, label: 'Buildings' },
+          { id: 'elevators', path: '/elevators', icon: GiElevator, label: 'Lifts' },
+          { id: 'admin-assign', path: '/admin-assign', icon: ClipboardList, label: 'Assign' },
+        ];
+      case "technician":
+        return [
+          { id: 'dashboard', path: '/dashboardtechnician', icon: LayoutDashboard, label: 'Dashboard' },
+          { id: 'monitor', path: '/monitor', icon: Monitor, label: 'Monitor' },
+          { id: 'my-tasks', path: '/my-tasks', icon: ClipboardList, label: 'My Tasks' },
+        ];
+      case "user":
+      default:
+        return [
+          { id: 'dashboard', path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+          { id: 'monitor', path: '/monitor', icon: Monitor, label: 'Monitor' },
+        ];
+    }
+  };
+
+  const menuItems = useMemo(() => getMenuItemsByRole(user?.role), [user?.role]);
 
   const dropdownItems = [
     { id: 'profile', path: '/profile', icon: Users, label: 'Profile' },
     { id: 'settings', path: '/settings', icon: Settings, label: 'Settings' },
-    { id: '2fa-setup', path: '/2fa-setup', icon: Shield, label: '2FA Setup' }, // เพิ่มเมนู 2FA Setup
+    { id: '2fa-setup', path: '/2fa-setup', icon: Shield, label: '2FA Setup' },
     { id: 'help', path: '/help', icon: HelpCircle, label: 'Help' },
   ];
-
-  const isActive = (path) => location.pathname === path;
 
   const handleNavigate = (path) => {
     navigate(path);
@@ -54,27 +77,35 @@ const MobileMenu = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg rounded-t-xl z-50 md:hidden">
+    <div
+      className={[
+        "fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg rounded-t-xl z-50 md:hidden",
+        "transition-transform duration-300 will-change-transform",
+        hiddenOnScroll ? "translate-y-full" : "translate-y-0",
+      ].join(" ")}
+    >
       <nav className="flex justify-around p-2 relative">
         <div className="flex flex-grow overflow-x-auto scrollbar-hide">
           {menuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavigate(item.path)}
-              className={`
-                flex flex-col items-center justify-center p-2 rounded-lg transition-colors duration-200 flex-shrink-0 min-w-[70px]
-                ${isActive(item.path) ? 'text-blue-600' : 'text-gray-500 hover:text-blue-500'}
-              `}
+              className={[
+                "flex flex-col items-center justify-center p-2 rounded-lg transition-colors duration-200",
+                "flex-shrink-0 min-w-[70px]",
+                isActivePath(location.pathname, item.path, { exact: item.path === '/' })
+                  ? 'text-blue-600'
+                  : 'text-gray-500 hover:text-blue-500',
+              ].join(" ")}
             >
               <item.icon size={20} />
-              <span className="text-xs font-medium whitespace-nowrap">
+              <span className="text-xs font-medium whitespace-nowrap mt-1">
                 {item.label}
               </span>
             </button>
           ))}
         </div>
 
-        {/* เส้นแบ่งแนวตั้ง */}
         <div className="h-10 w-px bg-gray-200 self-center mx-2"></div>
 
         <div className="flex items-center">
@@ -87,11 +118,13 @@ const MobileMenu = () => {
           </button>
         </div>
 
-        <div className={`
-          absolute bottom-full right-2 mb-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50
-          transition-all duration-300 ease-in-out transform origin-bottom-right
-          ${isDropdownOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}
-        `}>
+        <div
+          className={[
+            "absolute bottom-full right-2 mb-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50",
+            "transition-all duration-300 ease-in-out transform origin-bottom-right",
+            isDropdownOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none',
+          ].join(" ")}
+        >
           <div className="p-2 space-y-1">
             <div className="flex items-center gap-2 p-2 border-b border-gray-200 mb-2">
               {user?.user_img ? (

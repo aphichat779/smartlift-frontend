@@ -1,4 +1,3 @@
-// src/components/pages/TechnicianTasks.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { technicianService } from "../../services/technicianService";
 import { toolsService } from "@/services/toolsService";
@@ -153,8 +152,7 @@ function FilePreviewDialog({ open, onOpenChange, url, name }) {
         <div className="px-2 pb-0">
           {isImageExt(ext) && (
             <div className="rounded-lg border overflow-auto">
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <img src={url} className="max-h-[70vh] object-contain w-full" />
+              <img src={url} className="max-h-[70vh] object-contain w-full" alt="Preview" />
             </div>
           )}
 
@@ -209,7 +207,6 @@ function ToolsPickerDialog({ open, onOpenChange, initial = [], onConfirm }) {
   const [perPage] = useState(50);
   const [items, setItems] = useState([]);
 
-  // แปลง initial → map เพื่อควบคุมจำนวน
   const [picked, setPicked] = useState(() => {
     const m = {};
     (initial || []).forEach((t) => {
@@ -285,7 +282,6 @@ function ToolsPickerDialog({ open, onOpenChange, initial = [], onConfirm }) {
           <DialogDescription>ค้นหาแล้วกดปุ่มบวกเพื่อเพิ่ม</DialogDescription>
         </DialogHeader>
 
-        {/* ค้นหา */}
         <div className="flex items-center gap-2 mb-3">
           <div className="relative flex-1">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -305,7 +301,6 @@ function ToolsPickerDialog({ open, onOpenChange, initial = [], onConfirm }) {
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
-          {/* รายการเครื่องมือ */}
           <Card className="border">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">รายการเครื่องมือ</CardTitle>
@@ -322,10 +317,10 @@ function ToolsPickerDialog({ open, onOpenChange, initial = [], onConfirm }) {
                       key={it.tool_id}
                       className="flex items-center gap-3 p-2 rounded-lg border hover:bg-slate-50"
                     >
-                      {/* eslint-disable-next-line jsx-a11y/alt-text */}
                       <img
                         src={buildImg(it.tool_img)}
                         className="h-12 w-16 object-cover rounded border bg-white"
+                        alt={it.tool_name}
                       />
                       <div className="flex-1">
                         <div className="font-medium">{it.tool_name}</div>
@@ -343,7 +338,6 @@ function ToolsPickerDialog({ open, onOpenChange, initial = [], onConfirm }) {
             </CardContent>
           </Card>
 
-          {/* ที่เลือกไว้ */}
           <Card className="border">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">เครื่องมือที่เลือก</CardTitle>
@@ -366,30 +360,15 @@ function ToolsPickerDialog({ open, onOpenChange, initial = [], onConfirm }) {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => dec(t.tool_id)}
-                            title="ลดจำนวน"
-                          >
+                          <Button variant="outline" size="icon" onClick={() => dec(t.tool_id)} title="ลดจำนวน">
                             <Minus className="h-4 w-4" />
                           </Button>
                           <div className="w-10 text-center">{t.qty}</div>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => inc(t.tool_id)}
-                            title="เพิ่มจำนวน"
-                          >
+                          <Button variant="outline" size="icon" onClick={() => inc(t.tool_id)} title="เพิ่มจำนวน">
                             <Plus className="h-4 w-4" />
                           </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => rm(t.tool_id)}
-                          title="เอาออก"
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => rm(t.tool_id)} title="เอาออก">
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -424,38 +403,31 @@ function ToolsPickerDialog({ open, onOpenChange, initial = [], onConfirm }) {
   );
 }
 
+
 /* ---------------- component หลัก ---------------- */
 export default function TechnicianTasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
 
-  // modal state
   const [open, setOpen] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
 
-  // detail/timeline
   const [info, setInfo] = useState(null);
   const [history, setHistory] = useState([]);
 
-  // form state
   const [detail, setDetail] = useState("");
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [startDate, setStartDate] = useState("");
-  const [expectedEndDate, setExpectedEndDate] = useState("");
 
-  // เลือกสถานะที่จะอัปเดต (ค่าเริ่มต้น)
   const [nextStatus, setNextStatus] = useState("progress");
 
-  // preview state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewName, setPreviewName] = useState("");
 
-  // 🔧 เครื่องมือที่ใช้ในงาน
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [toolsPicked, setToolsPicked] = useState([]); // [{tool_id, tool_name, cost, qty, tool_img}]
+  const [toolsPicked, setToolsPicked] = useState([]);
   const toolsTotal = useMemo(
     () =>
       toolsPicked.reduce(
@@ -490,20 +462,8 @@ export default function TechnicianTasks() {
     fetchTasks();
   }, []);
 
-  const extractTimeline = (d) => {
-    if (!d) return [];
-    if (Array.isArray(d.data)) return d.data;
-    if (Array.isArray(d.timeline)) return d.timeline;
-    if (Array.isArray(d.history)) return d.history;
-    if (Array.isArray(d?.data?.timeline)) return d.data.timeline;
-    if (Array.isArray(d?.data?.history)) return d.data.history;
-    return [];
-  };
-
-  // เปิด modal + โหลด detail/history
   const openModalFor = async (row) => {
     const cur = normalizeStatus(row?.tk_status || row?.tk_status_text);
-    // ถัดไปตามลำดับ
     let next = "preparing";
     if (cur === "assign") next = "preparing";
     else if (cur === "preparing") next = "progress";
@@ -516,22 +476,17 @@ export default function TechnicianTasks() {
     setHistory([]);
     setDetail("");
     setFile(null);
-    setStartDate("");
-    setExpectedEndDate("");
     setNextStatus(next);
-
-    // เคลียร์รายการเครื่องมือทุกครั้งที่เปิด
     setToolsPicked([]);
 
     try {
       const d = await technicianService.detail(row.tk_id);
       if (d?.success) {
-        const task = d.data?.task ?? d.task ?? null;
-        setInfo(task);
-        setHistory(extractTimeline(d));
-        if (task) {
-          setStartDate(task.start_date || "");
-          setExpectedEndDate(task.expected_end_date || "");
+        const taskData = d.data || null;
+        setInfo(taskData);
+        setHistory(d?.data?.history || []);
+        if (taskData) {
+          setToolsPicked(taskData.tools || []);
         }
       }
     } catch (e) {
@@ -539,7 +494,6 @@ export default function TechnicianTasks() {
     }
   };
 
-  // รับงาน → เปิดโมดัลเพื่อใส่วัน (และเลือกเครื่องมือได้)
   const handleAcceptAndOpen = async (row) => {
     setOpen(true);
     setActiveTask({ ...row, tk_status: "assign" });
@@ -547,42 +501,29 @@ export default function TechnicianTasks() {
     setHistory([]);
     setDetail("");
     setFile(null);
-    setStartDate("");
-    setExpectedEndDate("");
     setNextStatus("preparing");
     setToolsPicked([]);
+    try {
+        const d = await technicianService.detail(row.tk_id);
+        if (d?.success) {
+            setInfo(d.data || null);
+            setHistory(d?.data?.history || []);
+        }
+    } catch(e) { console.error(e); }
   };
 
   const handleOpenUpdate = (row) => openModalFor(row);
 
-  // อัปเดตสถานะหลัก
   const submitUpdate = async () => {
     if (!activeTask) return;
-
-    const currentStatus = normalizeStatus(
-      activeTask?.tk_status || activeTask?.tk_status_text
-    );
-    const next = normalizeStatus(nextStatus);
-
-    if (currentStatus === "assign" && next === "preparing") {
-      if (!startDate || !expectedEndDate) {
-        alert("กรุณาระบุวันเริ่มงานและวันคาดว่าจะเสร็จ");
-        return;
-      }
-    }
-
     try {
       setSaving(true);
       const res = await technicianService.updateStatus({
         tk_id: activeTask.tk_id,
-        tk_status: next,
+        tk_status: normalizeStatus(nextStatus),
         detail: detail || "",
         file: file || undefined,
-        start_date: startDate || undefined,
-        expected_end_date: expectedEndDate || undefined,
-        // ส่งเครื่องมือที่เลือกไปด้วย
-        tools: toolsPicked,
-        tools_total_cost: toolsTotal,
+        tools: JSON.stringify(toolsPicked),
       });
       if (res?.success) {
         setOpen(false);
@@ -598,7 +539,6 @@ export default function TechnicianTasks() {
     }
   };
 
-  // เพิ่มบันทึกความคืบหน้า (ไม่เปลี่ยนสถานะ)
   const submitNoteOnly = async () => {
     if (!activeTask) return;
     if (!detail && !file && toolsPicked.length === 0) {
@@ -612,13 +552,12 @@ export default function TechnicianTasks() {
         detail: detail || "",
         section: "progress",
         file: file || undefined,
-        tools: toolsPicked,
-        tools_total_cost: toolsTotal,
+        tools: JSON.stringify(toolsPicked),
       });
       if (res?.success) {
         try {
           const d = await technicianService.detail(activeTask.tk_id);
-          if (d?.success) setHistory(extractTimeline(d));
+          if (d?.success) setHistory(d?.data?.history || []);
         } catch {}
         setDetail("");
         setFile(null);
@@ -636,7 +575,6 @@ export default function TechnicianTasks() {
     }
   };
 
-  // ปุ่ม “บันทึก” เดียว — ถ้าเปลี่ยนสถานะให้ submitUpdate, ถ้าไม่เปลี่ยนให้บันทึกความคืบหน้า
   const currentStatus = normalizeStatus(
     activeTask?.tk_status || activeTask?.tk_status_text
   );
@@ -658,7 +596,6 @@ export default function TechnicianTasks() {
     return base + raw;
   };
 
-  // ปุ่มเพิ่ม/ลดจำนวนในสรุป (ใน modal หลัก)
   const incQty = (id) =>
     setToolsPicked((list) =>
       list.map((t) => (t.tool_id === id ? { ...t, qty: Math.min(999, (t.qty || 1) + 1) } : t))
@@ -793,15 +730,9 @@ export default function TechnicianTasks() {
                         </CardHeader>
                         <CardContent className="p-4 pt-0">
                           <div className="space-y-2 text-sm text-gray-600">
-                            <div>
-                              <span className="font-medium">องค์กร:</span> {t.org_name || "-"}
-                            </div>
-                            <div>
-                              <span className="font-medium">อาคาร:</span> {t.building_name || "-"}
-                            </div>
-                            <div>
-                              <span className="font-medium">ลิฟต์:</span> {t.lift_name || t.lift_id || "-"}
-                            </div>
+                            <div><span className="font-medium">องค์กร:</span> {t.org_name || "-"}</div>
+                            <div><span className="font-medium">อาคาร:</span> {t.building_name || "-"}</div>
+                            <div><span className="font-medium">ลิฟต์:</span> {t.lift_name || t.lift_id || "-"}</div>
                             <div className="whitespace-pre-wrap">
                               <span className="font-medium">รายละเอียด:</span>{" "}
                               {t.report_detail || t.tk_data || "-"}
@@ -852,9 +783,7 @@ export default function TechnicianTasks() {
             </DialogDescription>
           </DialogHeader>
 
-          <Stepper
-            current={activeTask?.tk_status || activeTask?.tk_status_text || "assign"}
-          />
+          <Stepper current={activeTask?.tk_status || activeTask?.tk_status_text || "assign"} />
 
           <div className="grid md:grid-cols-2 gap-4 mt-0">
             <Card>
@@ -862,37 +791,19 @@ export default function TechnicianTasks() {
                 <CardTitle className="text-sm">รายละเอียดงาน</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
-                <div>
-                  วันที่แจ้ง: <b>{info?.date_rp || activeTask?.date_rp || "-"}</b>
-                </div>
-                <div>
-                  องค์กร: <b>{info?.org_name || activeTask?.org_name || "-"}</b>
-                </div>
-                <div>
-                  อาคาร: <b>{info?.building_name || activeTask?.building_name || "-"}</b>
-                </div>
-                <div>
-                  ลิฟต์:{" "}
-                  <b>
-                    {info?.lift_name || activeTask?.lift_name || activeTask?.lift_id || "-"}
-                  </b>
-                </div>
+                <div>วันที่แจ้ง: <b>{info?.date_rp || activeTask?.date_rp || "-"}</b></div>
+                <div>องค์กร: <b>{info?.org_name || activeTask?.org_name || "-"}</b></div>
+                <div>อาคาร: <b>{info?.building_name || activeTask?.building_name || "-"}</b></div>
+                <div>ลิฟต์: <b>{info?.lift_name || activeTask?.lift_name || activeTask?.lift_id || "-"}</b></div>
                 {info?.start_date && (
-                  <div>
-                    วันเริ่มงาน: <b>{info.start_date}</b>
-                  </div>
+                  <div>วันเริ่มงาน: <b>{info.start_date}</b></div>
                 )}
                 {info?.expected_end_date && (
-                  <div>
-                    วันคาดว่าจะเสร็จ: <b>{info.expected_end_date}</b>
-                  </div>
+                  <div>วันคาดว่าจะเสร็จ: <b>{info.expected_end_date}</b></div>
                 )}
                 <div className="pt-2">รายละเอียดแจ้งซ่อม:</div>
                 <div className="bg-gray-50 rounded p-2 text-gray-700 whitespace-pre-wrap">
-                  {info?.report_detail ||
-                    activeTask?.report_detail ||
-                    activeTask?.tk_data ||
-                    "-"}
+                  {info?.report_detail || activeTask?.report_detail || activeTask?.tk_data || "-"}
                 </div>
               </CardContent>
             </Card>
@@ -906,34 +817,22 @@ export default function TechnicianTasks() {
                   {history?.length ? (
                     <ul className="space-y-2">
                       {history.map((h, i) => {
-                        const fileUrlRaw = h.file_url || h.tk_status_tool || "";
+                        const fileUrlRaw = h.file_url || "";
                         const hasFile = typeof fileUrlRaw === "string" && fileUrlRaw.length > 0;
                         const fullUrl = buildFullUrl(fileUrlRaw);
-
                         return (
-                          <li
-                            key={h.tk_status_id || `${h.time}-${h.status}-${i}`}
-                            className="rounded border p-3"
-                          >
+                          <li key={h.tk_status_id || `${h.time}-${h.status}-${i}`} className="rounded border p-3">
                             <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
                               <span>{h.time}</span>
                               <span>•</span>
                               <span className="font-medium">{h.status}</span>
                             </div>
-                            <div className="text-sm whitespace-pre-wrap">
-                              {h.detail || "-"}
-                            </div>
-
+                            <div className="text-sm whitespace-pre-wrap">{h.detail || "-"}</div>
                             {hasFile && (
                               <button
                                 type="button"
                                 className="inline-flex items-center gap-1 text-xs text-indigo-600 mt-2 underline"
-                                onClick={() =>
-                                  openPreview(
-                                    fullUrl,
-                                    h.file_name || h.filename || h.name || ""
-                                  )
-                                }
+                                onClick={() => openPreview(fullUrl, h.file_name || "")}
                               >
                                 <Upload className="w-4 h-4" /> ไฟล์แนบ (พรีวิว)
                               </button>
@@ -950,7 +849,6 @@ export default function TechnicianTasks() {
             </Card>
           </div>
 
-          {/* ฟอร์มอัปเดต */}
           <div className="mt-0 space-y-3">
             <div className="text-sm font-semibold">อัปเดตความคืบหน้า</div>
 
@@ -972,44 +870,13 @@ export default function TechnicianTasks() {
                 </Button>
                 <Button
                   onClick={() => setNextStatus("complete")}
-                  className={`gap-1 ${
-                    nextStatus === "complete"
-                      ? ""
-                      : "bg-emerald-600 text-white hover:bg-emerald-700"
-                  }`}
+                  className={`gap-1 ${nextStatus === "complete" ? "" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
                 >
                   <CheckCircle2 className="w-4 h-4" /> complete
                 </Button>
               </div>
-
               <Input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </div>
-
-            {/* ฟิลด์วันที่สำหรับการรับงาน */}
-            {currentStatus === "assign" && nextStatus === "preparing" && (
-              <div className="grid md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
-                    <Calendar className="w-4 h-4" /> วันเริ่มงาน *
-                  </label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium flex items-center gap-1 mb-1">
-                    <Calendar className="w-4 h-4" /> วันคาดว่าจะเสร็จ *
-                  </label>
-                  <Input
-                    type="date"
-                    value={expectedEndDate}
-                    onChange={(e) => setExpectedEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
 
             <Textarea
               placeholder="ใส่รายละเอียดที่ดำเนินการ..."
@@ -1017,7 +884,6 @@ export default function TechnicianTasks() {
               onChange={(e) => setDetail(e.target.value)}
             />
 
-            {/* 🔧 ส่วนเลือกเครื่องมือ + สรุปราคา */}
             <div className="rounded-lg border p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-sm font-semibold">เครื่องมือที่ใช้</div>
@@ -1026,7 +892,6 @@ export default function TechnicianTasks() {
                   เพิ่มเครื่องมือ
                 </Button>
               </div>
-
               {toolsPicked.length === 0 ? (
                 <div className="text-sm text-slate-500">ยังไม่ได้เลือกเครื่องมือ</div>
               ) : (
@@ -1046,39 +911,25 @@ export default function TechnicianTasks() {
                           <TableCell className="font-medium">{t.tool_name}</TableCell>
                           <TableCell className="text-center">
                             <div className="inline-flex items-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => decQty(t.tool_id)}
-                              >
+                              <Button variant="outline" size="icon" onClick={() => decQty(t.tool_id)}>
                                 <Minus className="h-4 w-4" />
                               </Button>
                               <div className="w-10 text-center">{t.qty}</div>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => incQty(t.tool_id)}
-                              >
+                              <Button variant="outline" size="icon" onClick={() => incQty(t.tool_id)}>
                                 <Plus className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>
                           <TableCell>{THB.format(Number(t.cost || 0))}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeTool(t.tool_id)}
-                            >
+                            <Button variant="ghost" size="icon" onClick={() => removeTool(t.tool_id)}>
                               <X className="h-4 w-4" />
                             </Button>
                           </TableCell>
                         </TableRow>
                       ))}
                       <TableRow>
-                        <TableCell colSpan={2} className="text-right font-semibold">
-                          รวม
-                        </TableCell>
+                        <TableCell colSpan={2} className="text-right font-semibold">รวม</TableCell>
                         <TableCell colSpan={2} className="font-bold">
                           <span className="inline-flex items-center gap-1">
                             <Coins className="h-4 w-4 text-amber-600" />
@@ -1109,7 +960,6 @@ export default function TechnicianTasks() {
         </DialogContent>
       </Dialog>
 
-      {/* ------------ Modal (Preview) ------------ */}
       <FilePreviewDialog
         open={previewOpen}
         onOpenChange={setPreviewOpen}
@@ -1117,7 +967,6 @@ export default function TechnicianTasks() {
         name={previewName}
       />
 
-      {/* ------------ Modal (เลือกเครื่องมือ) ------------ */}
       <ToolsPickerDialog
         open={toolsOpen}
         onOpenChange={setToolsOpen}

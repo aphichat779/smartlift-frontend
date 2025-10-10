@@ -1,53 +1,53 @@
 // src/services/DashboardService.js
 
-import { apiService } from './api'; // สมมติว่ามี apiService ที่มีเมธอด .get() อยู่แล้ว
+import { apiService } from './api'; // ต้องมี .get() ที่คืนค่าผ่าน JSON-parsed object
 
 /**
- * ดึงข้อมูล Dashboard ตามบทบาทของผู้ใช้
- * @param {string} role - บทบาทของผู้ใช้ ('super_admin', 'admin', 'technician', 'user')
- * @param {number | null} orgId - org_id ของผู้ใช้ที่เข้าสู่ระบบ
- * @returns {Promise<object>} - ข้อมูล Dashboard
+ * ดึงแดชบอร์ดช่างเทคนิคจาก single endpoint เดียว
+ * @param {boolean} orgScopeSelf - true = จำกัดตาม org ของผู้ใช้, false = system-wide (ค่าเริ่มต้นตาม Mock)
+ * @returns {Promise<{success: boolean, user: object, kpis: any[], tasks: any[], reports: any[], lifts: any[], activity: any[]}>}
+ */
+export async function fetchTechnicianDashboard(orgScopeSelf = false) {
+  let endpoint = '/api/dashboard/technician.php';
+  if (orgScopeSelf) endpoint += '?org_scope=self';
+
+  const data = await apiService.get(endpoint);
+  if (data && data.success === false) {
+    throw new Error(data.message || 'โหลด Technician Dashboard ไม่สำเร็จ');
+  }
+  return data;
+}
+
+/**
+ * (คงไว้สำหรับหน้าอื่น) ดึง Dashboard ตามบทบาทของผู้ใช้
+ * - หมายเหตุ: หน้า Technician ใช้ fetchTechnicianDashboard() แทน
+ * @param {'super_admin'|'admin'|'user'} role
+ * @param {number|null} orgId  ใช้เฉพาะ role 'user' (กรณีต้องการกรองตาม org)
+ * @returns {Promise<object>}
  */
 export async function fetchDashboardData(role, orgId = null) {
-    let endpoint = '/api/dashboard/';
-    
-    // กำหนด Endpoint ตามบทบาทที่มาจาก PHP files
-    switch (role) {
-        case 'super_admin':
-            endpoint += 'dashboardsuperadmin.php';
-            break;
-        case 'admin':
-            endpoint += 'dashboardadmin.php';
-            break;
-        case 'technician':
-            endpoint += 'dashboardtechnician.php';
-            break;
-        case 'user':
-            endpoint += 'dashboarduser.php';
-            // สำหรับ Admin/SuperAdmin ที่ต้องการ Impersonate User หรือส่ง orgId ไปกรอง
-            if (orgId && orgId > 0) { 
-                endpoint += `?org_id=${orgId}`;
-            }
-            break;
-        default:
-            throw new Error(`บทบาทที่ไม่รู้จัก: ${role}`);
-    }
+  let endpoint = '/api/dashboard/';
 
-    try {
-        const data = await apiService.get(endpoint);
+  switch (role) {
+    case 'super_admin':
+      endpoint += 'dashboardsuperadmin.php';
+      break;
+    case 'admin':
+      endpoint += 'dashboardadmin.php';
+      break;
+    case 'user':
+      endpoint += 'dashboarduser.php';
+      if (orgId && orgId > 0) {
+        endpoint += `?org_id=${orgId}`;
+      }
+      break;
+    default:
+      throw new Error(`บทบาทที่ไม่รู้จัก: ${role}`);
+  }
 
-        // ตรวจสอบ success flag ที่มาจาก PHP API 
-        // NOTE: ในกรณี "ไม่มีองค์กร" (orgId: 0) PHP จะส่ง success: true กลับมา 
-        if (data && data.success === false) {
-            throw new Error(data.message || 'การดึงข้อมูล Dashboard ไม่สำเร็จ (Success=false)');
-        }
-        
-        // สำหรับกรณี success: true (รวมถึงกรณี orgId: 0)
-        return data;
-        
-    } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการดึงข้อมูล Dashboard:', error);
-        // ส่ง Error ขึ้นไปเพื่อให้ Component แสดงผลข้อผิดพลาด
-        throw error;
-    }
+  const data = await apiService.get(endpoint);
+  if (data && data.success === false) {
+    throw new Error(data.message || 'การดึงข้อมูล Dashboard ไม่สำเร็จ (Success=false)');
+  }
+  return data;
 }
