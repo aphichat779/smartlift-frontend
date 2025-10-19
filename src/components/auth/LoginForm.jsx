@@ -6,7 +6,7 @@ import { Eye, EyeOff, Loader2, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // รับ prop onSwitchToReset2FA เพิ่มเข้ามา
-export default function LoginForm({ onRequire2FA, onSwitchToRegister, onForgotPassword, onSwitchToReset2FA }) {
+export default function LoginForm({ onRequire2FA, onSwitchToRegister, onForgotPassword, onSwitchToReset }) {
   const { login } = useAuth();
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -109,7 +109,7 @@ export default function LoginForm({ onRequire2FA, onSwitchToRegister, onForgotPa
                   ลืมรหัสผ่าน?
                 </button>
                 <span className="text-slate-300">|</span>
-                <button type="button" onClick={onSwitchToReset2FA} className="font-medium text-blue-600 hover:text-blue-800 transition-colors">
+                <button type="button" onClick={onSwitchToReset} className="font-medium text-blue-600 hover:text-blue-800 transition-colors">
                   รีเซ็ต 2FA
                 </button>
               </div>

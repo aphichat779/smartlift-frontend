@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,19 +12,17 @@ import { Eye, EyeOff, Loader2, UserPlus, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthLayout from './AuthLayout';
 
-// --- 1. สร้าง Variants สำหรับแอนิเมชัน (ปรับปรุงใหม่) ---
+// --- 1) Variants หลักของฟอร์ม ---
 const formVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
   exit: { opacity: 0, y: -20, transition: { duration: 0.3, ease: 'easeIn' } },
 };
 
-// --- NEW: Variants สำหรับ Stagger Animation (การแสดงผลทีละส่วน) ---
+// --- 2) Stagger container สำหรับ fields ---
 const staggerContainerVariants = {
   visible: {
-    transition: {
-      staggerChildren: 0.07, // ให้แต่ละ item ดีเลย์ 0.07 วินาที
-    },
+    transition: { staggerChildren: 0.07 },
   },
 };
 
@@ -32,26 +31,29 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
 };
 
-// --- NEW: Variants สำหรับไอคอน Success ให้เด่นขึ้น ---
+// --- 3) Success icon animation (แก้ error: ใช้ tween เพื่อรองรับหลาย keyframes) ---
 const successIconVariants = {
-    hidden: { scale: 0.5, opacity: 0 },
-    visible: {
-        scale: [0.5, 1.1, 1], // Animation เด้งๆ
-        opacity: 1,
-        transition: {
-            type: 'spring',
-            stiffness: 300,
-            damping: 20,
-            delay: 0.2
-        }
-    }
-}
+  hidden: { scale: 0.5, opacity: 0 },
+  visible: {
+    scale: [0.5, 1.1, 1],
+    opacity: [0, 1, 1],
+    transition: {
+      type: 'tween',
+      duration: 0.5,
+      ease: 'easeOut',
+      times: [0, 0.6, 1],
+      delay: 0.2,
+    },
+  },
+};
 
-// --- NEW: สร้าง MotionButton เพื่อให้ Button ของ shadcn/ui ใช้แอนิเมชันได้ ---
+// --- 4) MotionButton สำหรับ shadcn/ui Button ---
 const MotionButton = motion(Button);
 
 const RegisterForm = ({ onSwitchToLogin }) => {
   const { register } = useAuth();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     username: '', password: '', confirmPassword: '', first_name: '',
     last_name: '', email: '', phone: '', birthdate: '', address: '',
@@ -87,34 +89,43 @@ const RegisterForm = ({ onSwitchToLogin }) => {
     setError('');
     try {
       const { confirmPassword, ...registerData } = formData;
-      await register(registerData);
+      await register(registerData); // ถ้ามี auto-login/redirect ใน register อาจต้องปิดใน hook นั้น
       setSuccess(true);
     } catch (error) {
-      setError(error.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
+      setError(error?.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก');
     } finally {
       setLoading(false);
     }
   };
 
+  const goLogin = () => {
+    if (onSwitchToLogin) return onSwitchToLogin();
+    navigate('/login');
+  };
+
   return (
-    <AuthLayout>
+    // ส่ง suppressRedirect เพื่อกันการ redirect ระหว่างโชว์ Success (ถ้าคุณใช้ร่วมกับ Guard ภายนอก)
+    <AuthLayout suppressRedirect={success}>
       <AnimatePresence mode="wait">
         {success ? (
-          // --- หน้าจอ Success (ปรับปรุง) ---
+          // --- หน้าจอ Success ---
           <motion.div key="success" variants={formVariants} initial="hidden" animate="visible" exit="exit">
             <Card className="w-full max-w-md mx-auto bg-white/85 backdrop-blur shadow-xl ring-1 ring-slate-200 rounded-2xl">
               <CardHeader className="space-y-1 text-center">
-                {/* --- UPDATED: เพิ่มแอนิเมชันให้ไอคอน --- */}
-                <motion.div variants={successIconVariants} initial="hidden" animate="visible" className="inline-block p-3 bg-green-100 rounded-full mx-auto mb-4">
+                <motion.div
+                  variants={successIconVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="inline-block p-3 bg-green-100 rounded-full mx-auto mb-4"
+                >
                   <CheckCircle className="h-8 w-8 text-green-600" />
                 </motion.div>
                 <CardTitle className="text-2xl">สมัครสมาชิกสำเร็จ!</CardTitle>
                 <CardDescription>บัญชีของคุณถูกสร้างเรียบร้อยแล้ว</CardDescription>
               </CardHeader>
               <CardContent>
-                {/* --- UPDATED: ใช้ MotionButton --- */}
                 <MotionButton
-                  onClick={onSwitchToLogin}
+                  onClick={goLogin}
                   className="w-full"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
@@ -126,7 +137,7 @@ const RegisterForm = ({ onSwitchToLogin }) => {
             </Card>
           </motion.div>
         ) : (
-          // --- ฟอร์มสมัครสมาชิก (ปรับปรุง) ---
+          // --- ฟอร์มสมัครสมาชิก ---
           <motion.div key="form" variants={formVariants} initial="hidden" animate="visible" exit="exit">
             <Card className="w-full max-w-2xl mx-auto bg-white/85 backdrop-blur shadow-xl ring-1 ring-slate-200 rounded-2xl">
               <CardHeader className="space-y-1 text-center">
@@ -137,7 +148,6 @@ const RegisterForm = ({ onSwitchToLogin }) => {
                 <CardDescription>กรุณากรอกข้อมูลเพื่อสร้างบัญชี SmartLift</CardDescription>
               </CardHeader>
               <CardContent>
-                {/* --- UPDATED: ครอบ form ด้วย stagger container --- */}
                 <motion.form
                   onSubmit={handleSubmit}
                   className="space-y-4"
@@ -147,7 +157,12 @@ const RegisterForm = ({ onSwitchToLogin }) => {
                 >
                   <AnimatePresence>
                     {error && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}>
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
                         <Alert variant="destructive">
                           <AlertDescription>{error}</AlertDescription>
                         </Alert>
@@ -155,7 +170,6 @@ const RegisterForm = ({ onSwitchToLogin }) => {
                     )}
                   </AnimatePresence>
 
-                  {/* --- UPDATED: ครอบ Input Fields ด้วย motion.div เพื่อทำ Stagger --- */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <motion.div variants={itemVariants} className="space-y-2">
                       <Label htmlFor="username">ชื่อผู้ใช้ *</Label>
@@ -192,17 +206,50 @@ const RegisterForm = ({ onSwitchToLogin }) => {
                     <motion.div variants={itemVariants} className="space-y-2">
                       <Label htmlFor="password">รหัสผ่าน *</Label>
                       <div className="relative">
-                        <Input id="password" name="password" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleChange} className="pr-10" required disabled={loading} />
-                        <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowPassword(!showPassword)} disabled={loading}>
+                        <Input
+                          id="password"
+                          name="password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={formData.password}
+                          onChange={handleChange}
+                          className="pr-10"
+                          required
+                          disabled={loading}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                          disabled={loading}
+                        >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
                     </motion.div>
+
                     <motion.div variants={itemVariants} className="space-y-2">
                       <Label htmlFor="confirmPassword">ยืนยันรหัสผ่าน *</Label>
                       <div className="relative">
-                        <Input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleChange} className="pr-10" required disabled={loading} />
-                        <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowConfirmPassword(!showConfirmPassword)} disabled={loading}>
+                        <Input
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={formData.confirmPassword}
+                          onChange={handleChange}
+                          className="pr-10"
+                          required
+                          disabled={loading}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          disabled={loading}
+                        >
                           {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
@@ -211,20 +258,26 @@ const RegisterForm = ({ onSwitchToLogin }) => {
 
                   <motion.div variants={itemVariants}>
                     <MotionButton
-                        type="submit"
-                        className="w-full"
-                        disabled={loading}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.98 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                      type="submit"
+                      className="w-full"
+                      disabled={loading}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 15 }}
                     >
-                      {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> กำลังสมัครสมาชิก...</>) : ('สมัครสมาชิก')}
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> กำลังสมัครสมาชิก...
+                        </>
+                      ) : (
+                        'สมัครสมาชิก'
+                      )}
                     </MotionButton>
                   </motion.div>
-                  
+
                   <motion.div variants={itemVariants} className="text-center text-sm text-muted-foreground">
                     มีบัญชีอยู่แล้ว?{' '}
-                    <Button type="button" variant="link" onClick={onSwitchToLogin} className="p-0 h-auto font-normal">
+                    <Button type="button" variant="link" onClick={goLogin} className="p-0 h-auto font-normal">
                       เข้าสู่ระบบ
                     </Button>
                   </motion.div>

@@ -450,7 +450,7 @@ export default function ElevatorDetail() {
                 </div>
               </Section>
 
-              <Section title="สถิติการเรียกลิฟต์ตามชั้น (ตัวอย่าง)">
+              <Section title="สถิติการเรียกลิฟต์ตามชั้น">
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={callStats} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>

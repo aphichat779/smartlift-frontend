@@ -7,10 +7,9 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
-    // แก้ไข: ตรวจสอบและเพิ่ม / ที่จุดเริ่มต้นของ endpoint หากไม่มี
     const cleanedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${this.baseURL}${cleanedEndpoint}`;
-    
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -24,7 +23,6 @@ class ApiService {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // ถ้าเป็น FormData ไม่ต้องตั้ง Content-Type ให้ browser จัดการ boundary เอง
     if (options.body instanceof FormData) {
       delete config.headers['Content-Type'];
     }
@@ -33,13 +31,11 @@ class ApiService {
       const response = await fetch(url, config);
 
       if (response.status === 401) {
-        // จัดการกรณี Token หมดอายุ
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
         throw new Error('AUTH_EXPIRED');
       }
 
-      // พยายาม parse JSON ถ้าไม่ได้ให้โยนข้อความดิบ
       let data;
       const text = await response.text();
       try {
@@ -59,322 +55,91 @@ class ApiService {
     }
   }
 
-  // ==========================
-  // Generic Methods (เพิ่มเข้ามาเพื่อรองรับ DashboardService)
-  // ==========================
-  /**
-   * ดำเนินการ GET request ไปยัง endpoint ที่ระบุ
-   * @param {string} endpoint - URL ของ API endpoint (เช่น /api/dashboard/...)
-   */
-  async get(endpoint) {
-    // ใช้เมธอด request หลัก โดย method เป็น GET โดยปริยาย
-    return this.request(endpoint);
-  }
+  // Generic
+  async get(endpoint) { return this.request(endpoint); }
+  async post(endpoint, data) { return this.request(endpoint, { method: 'POST', body: JSON.stringify(data) }); }
+  async put(endpoint, data) { return this.request(endpoint, { method: 'PUT', body: JSON.stringify(data) }); }
+  async del(endpoint) { return this.request(endpoint, { method: 'DELETE' }); }
 
-  async post(endpoint, data) {
-    return this.request(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-  
-  async put(endpoint, data) {
-    return this.request(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  // ==========================
-  // Auth & Profile (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
-  // ==========================
-  async register(userData) {
-    return this.request('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  }
-
-  async login(credentials) {
-    return this.request('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    });
-  }
-
-  async getProfile() {
-    return this.request('/api/user/profile');
-  }
-
-  async updateProfile(profileData) {
-    return this.request('/api/user/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData),
-    });
-  }
-
+  // Auth & Profile
+  async register(userData) { return this.post('/api/auth/register', userData); }
+  async login(credentials) { return this.post('/api/auth/login', credentials); }
+  async getProfile() { return this.get('/api/user/profile'); }
+  async updateProfile(profileData) { return this.put('/api/user/profile', profileData); }
   async uploadProfileImage(imageFile) {
     const formData = new FormData();
     formData.append('profile_image', imageFile);
-    return this.request('/api/user/profile', {
-      method: 'POST',
-      body: formData,
-    });
+    return this.request('/api/user/profile', { method: 'POST', body: formData });
   }
 
-  // ==========================
-  // 2FA (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
-  // ==========================
-  async setup2FA() {
-    return this.request('/api/2fa/setup', { method: 'POST' });
-  }
+  // 2FA
+  async setup2FA() { return this.request('/api/2fa/setup', { method: 'POST' }); }
+  async verifySetup2FA(totpCode) { return this.post('/api/2fa/verify-setup', { totp_code: totpCode }); }
+  async verify2FA(tempToken, code) { return this.post('/api/2fa/verify', { temp_token: tempToken, code }); }
+  async requestReset2FA(username, method) { return this.post('/api/2fa/reset-request', { username, method }); }
+  async verifyReset2FA(username, otpCode) { return this.post('/api/2fa/reset-verify', { username, otp_code: otpCode }); }
+  async confirmTOTP(totpCode) { return this.post('/api/2fa/TOTP-confirm', { totp: totpCode }); }
 
-  async verifySetup2FA(totpCode) {
-    return this.request('/api/2fa/verify-setup', {
-      method: 'POST',
-      body: JSON.stringify({ totp_code: totpCode }),
-    });
-  }
+  // Organizations
+  async getOrganizations() { return this.get('/api/elevator/organizations'); }
+  async getOrganization(id) { return this.get(`/api/elevator/organizations?id=${id}`); }
+  async createOrganization(orgData) { return this.post('/api/elevator/organizations', orgData); }
+  async updateOrganization(id, orgData) { return this.put('/api/elevator/organizations', { id, ...orgData }); }
+  async deleteOrganization(id) { return this.del(`/api/elevator/organizations?id=${id}`); }
 
-  async verify2FA(tempToken, code) {
-    return this.request('/api/2fa/verify', {
-      method: 'POST',
-      body: JSON.stringify({ temp_token: tempToken, code }),
-    });
-  }
-
-  async requestReset2FA(username, method) {
-    return this.request('/api/2fa/reset-request', {
-      method: 'POST',
-      body: JSON.stringify({ username, method }),
-    });
-  }
-
-  async verifyReset2FA(username, otpCode) {
-    return this.request('/api/2fa/reset-verify', {
-      method: 'POST',
-      body: JSON.stringify({ username, otp_code: otpCode }),
-    });
-  }
-
-  async confirmTOTP(totpCode) {
-    return this.request('/api/2fa/TOTP-confirm', {
-      method: 'POST',
-      body: JSON.stringify({ totp: totpCode }),
-    });
-  }
-
-  // ==========================
-  // Organizations (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
-  // ==========================
-  async getOrganizations() {
-    return this.request('/api/elevator/organizations');
-  }
-
-  async getOrganization(id) {
-    return this.request(`/api/elevator/organizations?id=${id}`);
-  }
-
-  async createOrganization(orgData) {
-    return this.request('/api/elevator/organizations', {
-      method: 'POST',
-      body: JSON.stringify(orgData),
-    });
-  }
-
-  async updateOrganization(id, orgData) {
-    return this.request('/api/elevator/organizations', {
-      method: 'PUT',
-      body: JSON.stringify({ id, ...orgData }),
-    });
-  }
-
-  async deleteOrganization(id) {
-    return this.request(`/api/elevator/organizations?id=${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // ==========================
-  // Buildings (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
-  // ==========================
+  // Buildings
   async getBuildings(org_id = null) {
-    const endpoint = org_id
-      ? `/api/elevator/buildings?org_id=${org_id}`
-      : '/api/elevator/buildings';
-    return this.request(endpoint);
+    const endpoint = org_id ? `/api/elevator/buildings?org_id=${org_id}` : '/api/elevator/buildings';
+    return this.get(endpoint);
   }
+  async getBuilding(id) { return this.get(`/api/elevator/buildings?id=${id}`); }
+  async createBuilding(buildingData) { return this.post('/api/elevator/buildings', buildingData); }
+  async updateBuilding(id, buildingData) { return this.put('/api/elevator/buildings', { id, ...buildingData }); }
+  async deleteBuilding(id) { return this.del(`/api/elevator/buildings?id=${id}`); }
 
-  async getBuilding(id) {
-    return this.request(`/api/elevator/buildings?id=${id}`);
-  }
-
-  async createBuilding(buildingData) {
-    return this.request('/api/elevator/buildings', {
-      method: 'POST',
-      body: JSON.stringify(buildingData),
-    });
-  }
-
-  async updateBuilding(id, buildingData) {
-    return this.request('/api/elevator/buildings', {
-      method: 'PUT',
-      body: JSON.stringify({ id, ...buildingData }),
-    });
-  }
-
-  async deleteBuilding(id) {
-    return this.request(`/api/elevator/buildings?id=${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // ==========================
-  // Elevators (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
-  // ==========================
+  // Elevators
   async getElevators(org_id = null, building_id = null) {
     let endpoint = '/api/elevator/lifts';
     const params = new URLSearchParams();
     if (org_id) params.append('org_id', org_id);
     if (building_id) params.append('building_id', building_id);
     if (params.toString()) endpoint += `?${params.toString()}`;
-    return this.request(endpoint);
+    return this.get(endpoint);
   }
+  async createElevator(elevatorData) { return this.post('/api/elevator/lifts', elevatorData); }
+  async updateElevator(id, elevatorData) { return this.put('/api/elevator/lifts', { id, ...elevatorData }); }
+  async deleteElevator(id) { return this.del(`/api/elevator/lifts?id=${id}`); }
 
-  async createElevator(elevatorData) {
-    return this.request('/api/elevator/lifts', {
-      method: 'POST',
-      body: JSON.stringify(elevatorData),
-    });
-  }
-
-  async updateElevator(id, elevatorData) {
-    return this.request('/api/elevator/lifts', {
-      method: 'PUT',
-      body: JSON.stringify({ id, ...elevatorData }),
-    });
-  }
-
-  async deleteElevator(id) {
-    return this.request(`/api/elevator/lifts?id=${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // ==========================
-  // Reports (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
-  // ==========================
+  // Reports
   async getReports(org_id = null) {
     let endpoint = '/api/work/reports.php';
     if (org_id) endpoint += `?org_id=${org_id}`;
-    return this.request(endpoint);
+    return this.get(endpoint);
   }
+  async getReport(id) { return this.get(`/api/work/reports.php?id=${id}`); }
+  async createReport(reportData) { return this.post('/api/work/reports.php', reportData); }
+  async updateReport(reportData) { return this.put('/api/work/reports.php', reportData); }
+  async deleteReport(id) { return this.del(`/api/work/reports.php?id=${id}`); }
+  async getReportProgressByReport(rp_id) { return this.get(`/api/work/reports.php?progress=1&rp_id=${rp_id}`); }
+  async getReportProgressByTask(tk_id) { return this.get(`/api/work/reports.php?progress=1&tk_id=${tk_id}`); }
 
-  async getReport(id) {
-    return this.request(`/api/work/reports.php?id=${id}`);
-  }
-
-  async createReport(reportData) {
-    return this.request('/api/work/reports.php', {
-      method: 'POST',
-      body: JSON.stringify(reportData),
-    });
-  }
-
-  async updateReport(reportData) {
-    return this.request('/api/work/reports.php', {
-      method: 'PUT',
-      body: JSON.stringify(reportData),
-    });
-  }
-
-  async deleteReport(id) {
-    return this.request(`/api/work/reports.php?id=${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // >>> NEW: Progress API <<<
-  async getReportProgressByReport(rp_id) {
-    return this.request(`/api/work/reports.php?progress=1&rp_id=${rp_id}`);
-  }
-
-  async getReportProgressByTask(tk_id) {
-    return this.request(`/api/work/reports.php?progress=1&tk_id=${tk_id}`);
-  }
-
-  // ==========================
-  // Admin Users (เมธอดอื่นๆ ที่เหลือเหมือนเดิม)
-  // ==========================
-  async getUsers(page = 1, limit = 20) {
-    // ✅ backend ใช้ users.php
-    return this.request(`/api/admin/users.php?page=${page}&limit=${limit}`);
-  }
-
+  // Admin
+  async getUsers(page = 1, limit = 20) { return this.get(`/api/admin/users.php?page=${page}&limit=${limit}`); }
   async adminUpdateUser(userId, updates = {}) {
     const uid = Number(userId);
-    if (!uid || Number.isNaN(uid)) {
-      throw new Error('userId ไม่ถูกต้อง');
-    }
-
+    if (!uid || Number.isNaN(uid)) throw new Error('userId ไม่ถูกต้อง');
     const tasks = [];
-
-    // เปลี่ยนบทบาท
-    if (typeof updates.role === 'string') {
-      tasks.push(
-        this.request('/api/admin/users.php', {
-          method: 'POST',
-          body: JSON.stringify({
-            user_id: uid,
-            action: 'update_role',
-            role: updates.role,
-          }),
-        })
-      );
-    }
-
-    // เปลี่ยนองค์กร
-    if (typeof updates.org_id === 'number') {
-      tasks.push(
-        this.request('/api/admin/users.php', {
-          method: 'POST',
-          body: JSON.stringify({
-            user_id: uid,
-            action: 'update_user_org',
-            org_id: updates.org_id,
-          }),
-        })
-      );
-    }
-
-    if (tasks.length === 0) {
-      return { success: true, message: 'ไม่มีสิ่งที่ต้องอัปเดต' };
-    }
-
+    if (typeof updates.role === 'string') tasks.push(this.post('/api/admin/users.php', { user_id: uid, action: 'update_role', role: updates.role }));
+    if (typeof updates.org_id === 'number') tasks.push(this.post('/api/admin/users.php', { user_id: uid, action: 'update_user_org', org_id: updates.org_id }));
+    if (tasks.length === 0) return { success: true, message: 'ไม่มีสิ่งที่ต้องอัปเดต' };
     const results = await Promise.all(tasks);
     return { success: true, results };
   }
-
   async adminToggleUserStatus(userId, isActive) {
     const uid = Number(userId);
-    return this.request('/api/admin/users.php', {
-      method: 'POST',
-      body: JSON.stringify({
-        user_id: uid,
-        action: 'toggle_status',
-        is_active: isActive ? 1 : 0,
-      }),
-    });
+    return this.post('/api/admin/users.php', { user_id: uid, action: 'toggle_status', is_active: isActive ? 1 : 0 });
   }
-
-  async adminReset2FA(userId, reason) {
-    const uid = Number(userId);
-    // ✅ ให้ใช้ไฟล์ .php ตามสไตล์ backend ปัจจุบัน
-    return this.request('/api/admin/reset-2fa.php', {
-      method: 'POST',
-      body: JSON.stringify({ user_id: uid, reason }),
-    });
-  }
+  async adminReset2FA(userId, reason) { return this.post('/api/admin/reset-2fa.php', { user_id: Number(userId), reason }); }
 }
 
 export const apiService = new ApiService();

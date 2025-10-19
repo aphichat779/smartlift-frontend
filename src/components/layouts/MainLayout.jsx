@@ -1,24 +1,17 @@
-// src/components/layouts/MainLayout.jsx
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Sidebar from "./Sidebar";
-import Header from "./Header";
-import MobileMenu from "./MobileMenu";
+import MobileTopBar from "./MobileTopBar";
 import { useLocation } from "react-router-dom";
 
 const SIDEBAR_EXPANDED_PX = 256;
 const SIDEBAR_COLLAPSED_PX = 64;
-
-// ตั้งให้ตรงกับ header/menu จริงของคุณ (โดยประมาณ)
-const HEADER_H = 70;
-const MENU_H = 72;
 
 export default function MainLayout({ children }) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try { return localStorage.getItem("sl:sidebar-collapsed") === "1"; } catch { return false; }
   });
   const [isMobile, setIsMobile] = useState(false);
-  const [hideBars, setHideBars] = useState(false);
-  const scrollRef = useRef(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const { pathname } = useLocation();
   const fullBleed = useMemo(() => pathname.startsWith("/monitor"), [pathname]);
@@ -34,67 +27,60 @@ export default function MainLayout({ children }) {
     try { localStorage.setItem("sl:sidebar-collapsed", isCollapsed ? "1" : "0"); } catch {}
   }, [isCollapsed]);
 
-  // ตรวจการเลื่อนเฉพาะคอนเทนเนอร์ที่เลื่อนจริง
+  // ปิดเมนูเมื่อเปลี่ยน route และล็อก scroll เมื่อเมนูเปิด
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
   useEffect(() => {
-    if (!isMobile) return;
-    const el = scrollRef.current;
-    if (!el) return;
-
-    let lastY = el.scrollTop;
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const currY = el.scrollTop;
-        const dy = currY - lastY;
-        if (Math.abs(dy) > 8) {
-          setHideBars(dy > 0 && currY > 0);
-          lastY = currY;
-        }
-        ticking = false;
-      });
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [isMobile]);
+    const body = document.body;
+    if (mobileOpen) {
+      const prev = body.style.overflow;
+      body.style.overflow = "hidden";
+      return () => { body.style.overflow = prev; };
+    }
+  }, [mobileOpen]);
 
   const desktopPaddingLeft = isCollapsed ? SIDEBAR_COLLAPSED_PX : SIDEBAR_EXPANDED_PX;
 
-  // คิด padding ตามสถานะซ่อน/โชว์
-  const topPad = `calc(var(--safe-top) + ${hideBars ? 0 : HEADER_H}px)`;
-  const bottomPad = `calc(var(--safe-bottom) + ${hideBars ? 0 : MENU_H}px)`;
-
   return (
-    <div className="min-h-svh bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-800">
+    <div className="min-h-[100dvh] text-slate-800 relative overflow-hidden">
+      {/* พื้นหลังแบบไล่เฉด + glow */}
+      <div className="absolute inset-0 -z-10
+                      bg-[linear-gradient(180deg,#f7f8fb_0%,#eef1f7_40%,#e9ecf5_70%,#f7f8fb_100%)]" />
+      <div className="pointer-events-none absolute -top-24 -left-24 w-[900px] h-[500px]
+                      bg-[radial-gradient(600px_300px_at_center,rgba(59,130,246,0.22),transparent_60%)]
+                      blur-2xl -z-10" />
+      <div className="pointer-events-none absolute -top-28 -right-20 w-[1000px] h-[520px]
+                      bg-[radial-gradient(700px_320px_at_center,rgba(236,72,153,0.20),transparent_60%)]
+                      blur-2xl -z-10" />
+
+      {/* Sidebar (desktop + mobile drawer) */}
+      <Sidebar
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+      />
+
+      {isMobile && <MobileTopBar onMenu={() => setMobileOpen(true)} />}
+
+      {/* Content */}
       {isMobile ? (
-        <div className="flex flex-col min-h-svh">
-          <Header hiddenOnScroll={hideBars} />
-          <main
-            className="flex-1 h-svh overflow-hidden transition-[padding] duration-200"
-            style={{ paddingTop: topPad, paddingBottom: bottomPad }}
-          >
-            <div
-              ref={scrollRef}
-              className={`h-full overflow-auto ${fullBleed ? "px-0" : "px-2"}`}
-            >
-              {children}
-            </div>
-          </main>
-          <MobileMenu hiddenOnScroll={hideBars} />
-        </div>
+        <main
+          id="app-content"
+          className={`min-h-[100dvh] overflow-auto ${fullBleed ? "px-0" : "px-4 py-4"}`}
+          style={{ paddingTop: "calc(env(safe-area-inset-top,0px) + 56px)" }}
+        >
+          {children}
+        </main>
       ) : (
-        <>
-          <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-          <main
-            className="h-svh overflow-hidden transition-[padding] duration-300 ease-in-out"
-            style={{ paddingLeft: desktopPaddingLeft }}
-          >
-            <div className={`h-full overflow-auto ${fullBleed ? "px-0" : "px-6 md:px-8 py-6"}`}>
-              {children}
-            </div>
-          </main>
-        </>
+        <main
+          id="app-content"
+          className="h-[100dvh] overflow-auto transition-[padding] duration-300 ease-in-out"
+          style={{ paddingLeft: desktopPaddingLeft }}
+        >
+          <div className={`${fullBleed ? "px-0" : "px-6 md:px-8 py-6"}`}>
+            {children}
+          </div>
+        </main>
       )}
     </div>
   );

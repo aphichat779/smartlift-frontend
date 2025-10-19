@@ -1,12 +1,12 @@
 // src/App.jsx
 import React, { useEffect } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 
 // Dashboard
 import DashboardUser from "./components/dashboard/DashboardUser";
 import DashboardSuperAdmin from "./components/dashboard/DashboardSuperAdmin";
-import DashboardAdmin from "./components/dashboard/DashboardAdmin"; 
+import DashboardAdmin from "./components/dashboard/DashboardAdmin";
 import DashboardTechnician from "./components/dashboard/DashboardTechnician";
 
 import LoginForm from "./components/auth/LoginForm";
@@ -20,8 +20,7 @@ import AdminUserManagement from "./components/admin/AdminUserManagement";
 import AdminAssignTask from "./components/pages/AdminAssignTask";
 
 import MainLayout from "./components/layouts/MainLayout";
-import Organizations from "./components/pages/Organizations";
-import Buildings from "./components/pages/Buildings";
+import OrgAndBuildings from "./components/pages/OrgAndBuildings";
 import Elevators from "./components/pages/Elevators";
 import NotificationsPage from "./components/pages/NotificationsPage";
 import SettingsPage from "./components/pages/SettingsPage";
@@ -76,7 +75,7 @@ const RoleBasedDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) return; 
+    if (!user) return;
 
     let dashboardPath = "/";
 
@@ -107,7 +106,7 @@ const RoleBasedDashboard = () => {
   if (user && user.role === "user" && window.location.pathname === "/") {
     return <DashboardUser />;
   }
-  
+
   // แสดง Loading หรือ Fallback จนกว่าจะ Redirect สำเร็จ
   return (
     <div className="p-8 text-center text-gray-500">
@@ -156,7 +155,7 @@ export default function App() {
     if (user) {
       if (authPages.includes(currentPath)) {
         // หากผู้ใช้ Login แล้วและพยายามเข้าหน้า Auth ให้ redirect ไปที่หน้าหลัก
-        navigate("/", { replace: true }); 
+        navigate("/", { replace: true });
       }
       return;
     }
@@ -214,13 +213,13 @@ export default function App() {
         {/* Protected routes (ห่อด้วย Shell) */}
         {/* 1. Root Path: ใช้ RoleBasedDashboard เพื่อ Redirect ไปยัง Dashboard ที่ถูกต้อง 
            ** และแสดง DashboardUser เมื่อเป็น role: "user" */}
-        <Route path="/" element={<Shell><RoleBasedDashboard /></Shell>} /> 
+        <Route path="/" element={<Shell><RoleBasedDashboard /></Shell>} />
 
         {/* 2. Role-specific Dashboard Routes */}
         <Route path="/dashboardsuperadmin" element={<Shell><DashboardSuperAdmin /></Shell>} />
         <Route path="/dashboardadmin" element={<Shell><DashboardAdmin /></Shell>} />
         <Route path="/dashboardtechnician" element={<Shell><DashboardTechnician /></Shell>} />
-        
+
         {/* *** ส่วนที่ถูกลบออก: เพื่อไม่ให้เกิดการซ้ำซ้อนของ Route path="/" ***
         <Route path="/" element={<Shell><DashboardUser /></Shell>} /> */}
 
@@ -229,8 +228,9 @@ export default function App() {
         <Route path="/2fa-setup" element={<Shell><TwoFactorSetup /></Shell>} />
         <Route path="/admin-users" element={<Shell><AdminUserManagement /></Shell>} />
         <Route path="/admin-assign" element={<Shell><AdminAssignTask /></Shell>} />
-        <Route path="/organizations" element={<Shell><Organizations /></Shell>} />
-        <Route path="/buildings" element={<Shell><Buildings /></Shell>} />
+        <Route path="/orgs-buildings" element={<Shell><OrgAndBuildings /></Shell>} />
+        <Route path="/organizations" element={<Navigate to="/orgs-buildings" replace />} />
+        <Route path="/buildings" element={<Navigate to="/orgs-buildings?tab=buildings" replace />} />
         <Route path="/elevators" element={<Shell><Elevators /></Shell>} />
         <Route path="/notifications" element={<Shell><NotificationsPage /></Shell>} />
         <Route path="/settings" element={<Shell><SettingsPage /></Shell>} />

@@ -8,19 +8,19 @@ import {
   Users,
   UserCog,
   Wrench,
-  Activity,
   AlertTriangle,
   ClipboardList,
   Layers3,
   Loader2,
   RefreshCcw,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-
 import { fetchDashboardData } from "@/services/DashboardService";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ===== Shared styles
 const glassCard =
@@ -129,22 +129,8 @@ function KPI({ label, value }) {
     </motion.div>
   );
 }
-function KPIRow({ list }) {
-  return (
-    <div
-      className="
-        grid gap-4
-        [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]
-      "
-    >
-      {list.map((k) => (
-        <KPI key={k.label} {...k} />
-      ))}
-    </div>
-  );
-}
 
-// ===== Cards
+// ===== รายงานแจ้งปัญหา
 function UnassignedReports({ data }) {
   return (
     <Card className={`${glassCard} ring-amber-200`}>
@@ -172,6 +158,7 @@ function UnassignedReports({ data }) {
   );
 }
 
+// ===== งานที่กำลังดำเนินการ
 const taskStatusStyle = (s) => {
   const v = (s || "").toLowerCase();
   if (v === "assign") return "bg-blue-50 text-blue-700 ring-1 ring-blue-200";
@@ -180,6 +167,7 @@ const taskStatusStyle = (s) => {
   if (v === "complete") return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
   return "bg-slate-50 text-slate-700 ring-1 ring-slate-200";
 };
+
 function OngoingTasks({ data }) {
   return (
     <Card className={`${glassCard} ring-violet-200`}>
@@ -212,11 +200,12 @@ function OngoingTasks({ data }) {
   );
 }
 
+// ===== Bit Board
 function LiftStatusBoard({ data }) {
   return (
     <Card className={`${glassCard} ring-blue-200`}>
       <CardHeader>
-        <SectionHeader title="สถานะลิฟต์ (Bit Board)" icon={Server} />
+        <SectionHeader title="สถานะลิฟต์" icon={Server} />
       </CardHeader>
       <CardContent className="h-[300px] overflow-y-auto">
         <div className="space-y-2">
@@ -250,25 +239,37 @@ function LiftStatusBoard({ data }) {
   );
 }
 
-function ActivityFeed({ items }) {
+// ===== TwoFAStatus เฉพาะบัญชีตัวเอง
+function TwoFAStatusSelf({ enabled }) {
   return (
-    <Card className={`${glassCard} ring-emerald-200`}>
-      <CardHeader>
-        <SectionHeader title={`กิจกรรมล่าสุด (${items.length})`} icon={Activity} />
+    <Card className={`${glassCard} ring-emerald-200 h-auto`}>
+      <CardHeader className="pb-2">
+        <SectionHeader title="ความปลอดภัยบัญชี" icon={UserCog} />
       </CardHeader>
-      <CardContent className="h-full">
-        <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-          {items.length === 0 ? (
-            <p className="text-center text-slate-500 py-4">ไม่พบกิจกรรมล่าสุด</p>
-          ) : (
-            items.slice(0, 10).map((item, idx) => (
-              <div key={idx} className="flex text-sm rounded-xl border border-slate-200 p-3 bg-gradient-to-r from-slate-50 to-white">
-                <span className="font-mono text-xs text-blue-600 mr-3">{item.time}</span>
-                <p className="text-xs text-slate-800">{item.text}</p>
+      <CardContent>
+        {enabled ? (
+          <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+            <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div className="text-sm font-semibold">บัญชีของคุณเปิดใช้งาน 2FA แล้ว ปลอดภัยหายห่วง!</div>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700">
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <div className="font-semibold">ยังไม่เปิดใช้งาน 2FA</div>
+                <div className="text-rose-600/90">
+                  มีความเสี่ยงต่อการถูกเข้าถึงโดยไม่ได้รับอนุญาต กรุณาเปิดใช้งานทันที
+                </div>
               </div>
-            ))
-          )}
-        </div>
+            </div>
+            <div className="mt-2 text-right">
+              <Button size="sm" className="rounded-lg" asChild>
+                <a href="/2fa-setup">เปิดใช้งานตอนนี้</a>
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -285,7 +286,7 @@ function TopBar({ role, onRefresh }) {
       ? "Technician Dashboard"
       : "User Dashboard";
   return (
-    <div className="mb-6">
+    <div className="mb-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">{roleTitle}</h1>
         <Button variant="outline" size="sm" onClick={onRefresh} className="rounded-xl bg-white/70 backdrop-blur ring-1 ring-slate-200 hover:bg-white">
@@ -298,62 +299,9 @@ function TopBar({ role, onRefresh }) {
   );
 }
 
-// ===== States
-function LoadingState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      <p className="mt-4 text-lg font-medium text-slate-600">กำลังโหลดข้อมูล Dashboard…</p>
-    </div>
-  );
-}
-function ErrorState({ message, onRetry }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-rose-200 bg-rose-50/70">
-      <AlertTriangle className="h-8 w-8 text-rose-600" />
-      <p className="mt-3 text-lg font-bold text-rose-700">ไม่สามารถโหลดข้อมูลได้</p>
-      <p className="text-sm text-rose-600">{message}</p>
-      <Button onClick={onRetry} className="mt-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white">ลองอีกครั้ง</Button>
-    </div>
-  );
-}
-
-// ===== Layout content
-function DashboardContent({ role, data, onRefresh }) {
-  const kpiList = data.kpis || [];
-
-  return (
-    <div className="space-y-5">
-      <TopBar role={role} onRefresh={onRefresh} />
-
-      {/* แถวบน: KPI (4 ใบ) + กิจกรรมล่าสุด (กิน 2 คอลัมน์) */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 items-stretch">
-        {kpiList.map((k) => (
-          <div key={k.label} className="col-span-1">
-            <KPI {...k} />
-          </div>
-        ))}
-        <div className="col-span-1 sm:col-span-2 xl:col-span-2">
-          <ActivityFeed items={data.activity || []} />
-        </div>
-      </div>
-
-      {/* แถวถัดไป: ซ้าย (รายงาน/งาน) • ขวา (Bit Board) */}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="order-2 xl:order-2 xl:col-span-2 space-y-5">
-          <UnassignedReports data={data.reportsUnassigned || []} />
-          <OngoingTasks data={data.tasksOngoing || []} />
-        </div>
-        <div className="order-1 xl:order-2 space-y-5">
-          <LiftStatusBoard data={data.liftBits || []} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ===== Main
 export default function Dashboard({ role = "super_admin", orgId = null }) {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -378,18 +326,48 @@ export default function Dashboard({ role = "super_admin", orgId = null }) {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-slate-100 to-slate-200">
       <div className="mx-auto max-w-7xl p-4 md:p-6">
+        <TopBar role={role} onRefresh={loadData} />
+
         {loading ? (
-          <>
-            <TopBar role={role} onRefresh={loadData} />
-            <LoadingState />
-          </>
-        ) : error || !data ? (
-          <>
-            <TopBar role={role} onRefresh={loadData} />
-            <ErrorState message={error} onRetry={loadData} />
-          </>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <p className="mt-3 text-lg font-medium text-slate-600">กำลังโหลดข้อมูล Dashboard…</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center rounded-2xl border border-rose-200 bg-rose-50/70">
+            <AlertTriangle className="h-8 w-8 text-rose-600" />
+            <p className="mt-2 text-lg font-bold text-rose-700">ไม่สามารถโหลดข้อมูลได้</p>
+            <p className="text-sm text-rose-600">{error}</p>
+            <Button onClick={loadData} className="mt-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white">
+              ลองอีกครั้ง
+            </Button>
+          </div>
         ) : (
-          <DashboardContent role={role} data={data} onRefresh={loadData} />
+          <>
+            {/* แถวบน: KPI ทั้ง 4 การ์ด */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {(data?.kpis || []).map((k) => (
+                <KPI key={k.label} {...k} />
+              ))}
+            </div>
+
+            {/* แถวล่าง: รายงาน, งาน, สถานะลิฟต์, และความปลอดภัยบัญชี */}
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-3 mt-5">
+              
+              {/* คอลัมน์ซ้าย */}
+              <div className="xl:col-span-2 space-y-5">
+                <UnassignedReports data={data?.reportsUnassigned || []} />
+                <OngoingTasks data={data?.tasksOngoing || []} />
+              </div>
+              
+              {/* คอลัมน์ขวา */}
+              <div className="space-y-5">
+                <TwoFAStatusSelf enabled={user?.ga_enabled ?? false} />
+                <LiftStatusBoard data={data?.liftBits || []} />
+              </div>
+
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -197,7 +197,7 @@ export default function Reset2FA({ onBack }) {
                 )}
               </AnimatePresence>
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">ชื่อผู้ใช้ หรือ อีเมล</label>
+                <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">ชื่อผู้ใช้</label>
                 <input
                   id="username" name="username" type="text"
                   value={formData.username}

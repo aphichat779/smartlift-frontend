@@ -23,6 +23,11 @@ export const tasksService = {
     const qs = q ? `?q=${encodeURIComponent(q)}` : '';
     return apiService.request(`/api/admin/tasks/technicians.php${qs}`);
   },
+
+  technicianProfile(id) {
+    return apiService.get(`/api/work/techprofile.php?id=${encodeURIComponent(id)}&with_stats=1`);
+  },
+  
   reports(params = {}) {
     const qs = new URLSearchParams(params).toString();
     return apiService.request(`/api/admin/tasks/reports_open.php${qs ? `?${qs}` : ''}`);
