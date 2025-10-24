@@ -30,17 +30,13 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus } from "lucide-react";
 
-// ------------------------------------------------------------------
-// Utils & helpers
-// ------------------------------------------------------------------
+/* ---------------- Utils ---------------- */
 const allowed = ["assign", "preparing", "progress", "complete"];
 const normalizeStatus = (v) => (allowed.includes(String(v)) ? String(v) : "assign");
-
 const labelOf = (st) => {
   const s = normalizeStatus(st);
   if (s === "assign") return "รอรับงาน";
@@ -49,12 +45,7 @@ const labelOf = (st) => {
   if (s === "complete") return "เสร็จสิ้น";
   return s;
 };
-
-const THB = new Intl.NumberFormat("th-TH", {
-  style: "currency",
-  currency: "THB",
-  maximumFractionDigits: 0,
-});
+const THB = new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB", maximumFractionDigits: 0 });
 
 const extOf = (name = "") => {
   try {
@@ -82,7 +73,6 @@ const stepIndex = (st) => {
   const idx = steps.findIndex((s) => s.key === normalizeStatus(st));
   return idx < 0 ? 0 : idx;
 };
-
 const Stepper = ({ current }) => {
   const idx = stepIndex(current);
   return (
@@ -91,20 +81,13 @@ const Stepper = ({ current }) => {
         const done = i <= idx;
         return (
           <div key={step.key} className="flex items-center gap-3">
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                done ? "bg-emerald-500" : "bg-slate-500"
-              }`}
-              title={step.label}
-            >
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${done ? "bg-emerald-500" : "bg-slate-500"}`} title={step.label}>
               <svg viewBox="0 0 24 24" className="w-4 h-4 text-white">
                 <path fill="currentColor" d="M9 16.2l-3.5-3.5L4 14.2l5 5 11-11-1.5-1.5z" />
               </svg>
             </div>
             <span className="text-xs -ml-1">{step.label}</span>
-            {i < steps.length - 1 && (
-              <div className={`w-10 h-[2px] ${done ? "bg-emerald-400" : "bg-slate-500"}`} />
-            )}
+            {i < steps.length - 1 && <div className={`w-10 h-[2px] ${done ? "bg-emerald-400" : "bg-slate-500"}`} />}
           </div>
         );
       })}
@@ -119,15 +102,12 @@ function FilePreviewDialog({ open, onOpenChange, url, name }) {
       เปิด/ดาวน์โหลดไฟล์นี้
     </a>
   );
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="md:max-w-2xl w-[92vw] max-h-[90vh] p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-0">
           <DialogTitle className="truncate">ไฟล์แนบ</DialogTitle>
-          <DialogDescription>
-            พรีวิวไฟล์ในหน้า หากแสดงไม่ได้ให้ใช้ลิงก์สำรองด้านล่าง
-          </DialogDescription>
+          <DialogDescription>พรีวิวไฟล์ในหน้า หากแสดงไม่ได้ให้ใช้ลิงก์สำรองด้านล่าง</DialogDescription>
         </DialogHeader>
 
         <div className="px-2 pb-0">
@@ -136,31 +116,26 @@ function FilePreviewDialog({ open, onOpenChange, url, name }) {
               <img src={url} className="max-h-[70vh] object-contain w-full" alt="Preview" />
             </div>
           )}
-
           {isPdfExt(ext) && (
             <div className="rounded-lg border overflow-hidden">
               <iframe title={name || "PDF"} src={url} className="w-full h-[70vh]" />
             </div>
           )}
-
           {isVideoExt(ext) && (
             <div className="rounded-lg border overflow-hidden">
               <video src={url} controls className="w-full max-h-[70vh]" />
             </div>
           )}
-
           {isAudioExt(ext) && (
             <div className="rounded-lg border p-6 flex items-center justify-center">
               <audio src={url} controls className="w-full" />
             </div>
           )}
-
           {!isImageExt(ext) && !isPdfExt(ext) && !isVideoExt(ext) && !isAudioExt(ext) && (
             <div className="rounded-lg border p-6 text-sm text-gray-700">
               ไม่รองรับพรีวิวไฟล์ชนิดนี้ในหน้าได้โดยตรง — {downloadable}
             </div>
           )}
-
           <div className="mt-3 text-xs text-gray-500">
             ถ้าไฟล์ไม่แสดง อาจถูกบล็อกโดย CORS/Content-Type ให้เปิดด้วยลิงก์: {downloadable}
           </div>
@@ -176,9 +151,7 @@ function FilePreviewDialog({ open, onOpenChange, url, name }) {
   );
 }
 
-// ------------------------------------------------------------------
-// Popup ความคืบหน้า (อ่านอย่างเดียว)
-// ------------------------------------------------------------------
+/* ---------------- Popup ความคืบหน้า (อ่านอย่างเดียว) ---------------- */
 function ProgressDialog({ open, onOpenChange, report, buildFullUrl }) {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
@@ -194,10 +167,11 @@ function ProgressDialog({ open, onOpenChange, report, buildFullUrl }) {
     setPreviewOpen(true);
   };
 
+  // ใช้รายการแรก (ล่าสุด) เพราะ backend ส่ง DESC
   const currentStatus = useMemo(() => {
     if (history?.length) {
-      const last = history[history.length - 1];
-      return normalizeStatus(last?.status || last?.tk_status || report?.status);
+      const mostRecent = history[0];
+      return normalizeStatus(mostRecent?.status || mostRecent?.tk_status || report?.status);
     }
     if (report?.status) return normalizeStatus(report.status);
     return report?.assigned_count > 0 ? "preparing" : "assign";
@@ -206,36 +180,50 @@ function ProgressDialog({ open, onOpenChange, report, buildFullUrl }) {
   useEffect(() => {
     if (!open || !report) return;
     let cancelled = false;
-    const fetchData = async () => {
+
+    (async () => {
       try {
         setLoading(true);
-        let detail = null;
-        if (typeof tasksService.reportDetail === "function") {
-          const r = await tasksService.reportDetail(report.rp_id);
-          if (r?.success) detail = r?.data;
-        } else if (typeof tasksService.timeline === "function") {
-          const r = await tasksService.timeline(report.rp_id);
-          if (r?.success) detail = r?.data;
-        } else if (typeof tasksService.detail === "function") {
-          const r = await tasksService.detail(report.rp_id);
-          if (r?.success) detail = r?.data;
-        }
+        // ✅ ใช้ API ที่มีอยู่จริง
+        const res = await tasksService.reportProgressByRpId(report.rp_id);
+        const detail = res?.success ? (res.data || {}) : {};
+
+        // ✅ normalise ประวัติให้มี file_url และ tools[]
+        const rawHistory = Array.isArray(detail.history)
+          ? detail.history
+          : (Array.isArray(detail.timeline) ? detail.timeline : []);
+
+        const norm = (rawHistory || []).map((h) => {
+          let tools = [];
+          const tkTool = h.tk_status_tool;
+          if (tkTool) {
+            try {
+              const parsed = typeof tkTool === "string" ? JSON.parse(tkTool) : tkTool;
+              if (Array.isArray(parsed)) tools = parsed;
+              else if (parsed && Array.isArray(parsed.items)) tools = parsed.items;
+            } catch {}
+          }
+          return {
+            ...h,
+            file_url: h.file_url || h.tk_img || h.file || null,
+            tools,
+          };
+        });
 
         if (!cancelled) {
-          const h = detail?.history || detail?.timeline || report?.timeline || [];
-          setHistory(Array.isArray(h) ? h : []);
-          setInfo(detail || report || null);
+          setHistory(norm);
+          setInfo(Object.keys(detail).length ? detail : (report || null));
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) {
-          setHistory(report?.timeline || []);
+          setHistory([]);
           setInfo(report || null);
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
-    };
-    fetchData();
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -246,9 +234,7 @@ function ProgressDialog({ open, onOpenChange, report, buildFullUrl }) {
       <DialogContent className="md:max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>ความคืบหน้า • RP: {report?.rp_id}</DialogTitle>
-          <DialogDescription>
-            ดูสถานะล่าสุด ไทม์ไลน์ และไฟล์แนบ (โหมดอ่านอย่างเดียว)
-          </DialogDescription>
+          <DialogDescription>ดูสถานะล่าสุด ไทม์ไลน์ และไฟล์แนบ (โหมดอ่านอย่างเดียว)</DialogDescription>
         </DialogHeader>
 
         <Stepper current={currentStatus} />
@@ -264,9 +250,7 @@ function ProgressDialog({ open, onOpenChange, report, buildFullUrl }) {
               <div>อาคาร: <b>{info?.building_name || report?.building_name || "-"}</b></div>
               <div>ลิฟต์: <b>{info?.lift_name || report?.lift_name || "-"}</b></div>
               {info?.start_date && <div>วันเริ่มงาน: <b>{info.start_date}</b></div>}
-              {info?.expected_end_date && (
-                <div>วันคาดว่าจะเสร็จ: <b>{info.expected_end_date}</b></div>
-              )}
+              {info?.expected_end_date && <div>วันคาดว่าจะเสร็จ: <b>{info.expected_end_date}</b></div>}
               <div className="pt-2">รายละเอียดแจ้งซ่อม:</div>
               <div className="bg-gray-50 rounded p-2 text-gray-700 whitespace-pre-wrap">
                 {info?.detail || info?.report_detail || report?.detail || "-"}
@@ -281,10 +265,10 @@ function ProgressDialog({ open, onOpenChange, report, buildFullUrl }) {
             <CardContent>
               {loading ? (
                 <div className="text-sm text-gray-500">กำลังโหลด…</div>
-              ) : (history?.length ? (
+              ) : history?.length ? (
                 <div className="max-h-[260px] overflow-auto pr-1 space-y-2">
                   {history.map((h, i) => {
-                    const fileUrlRaw = h.file_url || h.file || "";
+                    const fileUrlRaw = h.file_url || h.tk_img || h.file || "";
                     const hasFile = typeof fileUrlRaw === "string" && fileUrlRaw.length > 0;
                     const fullUrl = buildFullUrl(fileUrlRaw);
                     const statusText = labelOf(h.status || h.tk_status || "");
@@ -292,7 +276,7 @@ function ProgressDialog({ open, onOpenChange, report, buildFullUrl }) {
                       <div key={h.tk_status_id || `${h.time}-${h.status}-${i}`} className="rounded border p-3">
                         <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
                           <span>{h.time || h.created_at || ""}</span>
-                          {statusText && <><span>•</span><span className="font-medium">{statusText}</span></>}
+                          {statusText && (<><span>•</span><span className="font-medium">{statusText}</span></>)}
                         </div>
                         <div className="text-sm whitespace-pre-wrap">{h.detail || h.note || "-"}</div>
                         {Array.isArray(h.tools) && h.tools.length > 0 && (
@@ -304,7 +288,7 @@ function ProgressDialog({ open, onOpenChange, report, buildFullUrl }) {
                           <button
                             type="button"
                             className="inline-flex items-center gap-1 text-xs text-indigo-600 mt-2 underline"
-                            onClick={() => openPreview(fullUrl, h.file_name || "")}
+                            onClick={() => openPreview(fullUrl, h.file_name || (fileUrlRaw.split("/").pop() || ""))}
                           >
                             ไฟล์แนบ (พรีวิว)
                           </button>
@@ -315,7 +299,7 @@ function ProgressDialog({ open, onOpenChange, report, buildFullUrl }) {
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">ยังไม่มีข้อมูล</div>
-              ))}
+              )}
             </CardContent>
           </Card>
         </div>
@@ -345,7 +329,10 @@ function ToolsSummary({ history }) {
     return Array.from(map.values());
   }, [history]);
 
-  const total = useMemo(() => items.reduce((s, x) => s + Number(x.cost || 0) * Number(x.qty || 0), 0), [items]);
+  const total = useMemo(
+    () => items.reduce((s, x) => s + Number(x.cost || 0) * Number(x.qty || 0), 0),
+    [items]
+  );
 
   if (!items.length) return null;
   return (
@@ -379,15 +366,12 @@ function ToolsSummary({ history }) {
   );
 }
 
-// ------------------------------------------------------------------
-// Main Component — คลิกแถวเพื่อเปิด Assign/Progress แทนปุ่ม
-// ------------------------------------------------------------------
+/* ---------------- Main: คลิกแถวเพื่อเปิด Assign/Progress ---------------- */
 function AdminAssignTask() {
   const [reports, setReports] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // assign dialog
   const [showAssign, setShowAssign] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedTech, setSelectedTech] = useState("");
@@ -395,22 +379,18 @@ function AdminAssignTask() {
   const [startDate, setStartDate] = useState("");
   const [assignedBy, setAssignedBy] = useState("");
 
-  // technician profile
   const [techProfile, setTechProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  // รายละเอียด (ยังคง component ไว้ แต่เลิกผูกคลิก)
-  const [showDetail, setShowDetail] = useState(false);
+  const [showDetail, setShowDetail] = useState(false); // kept for future use
   const [detailReport, setDetailReport] = useState(null);
 
-  // create report
   const [showCreateReport, setShowCreateReport] = useState(false);
   const [orgs, setOrgs] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [lifts, setLifts] = useState([]);
   const [newRp, setNewRp] = useState({ date_rp: "", org_id: "", building_id: "", lift_id: "", detail: "" });
 
-  // progress dialog
   const [progressOpen, setProgressOpen] = useState(false);
   const [progressReport, setProgressReport] = useState(null);
 
@@ -418,10 +398,9 @@ function AdminAssignTask() {
   const buildFullUrl = (raw = "") => {
     if (!raw) return "";
     if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-    return baseUrl + raw;
+    return baseUrl + (raw.startsWith("/") ? "" : "/") + raw;
   };
 
-  // อ่านชื่อผู้มอบจาก localStorage
   useEffect(() => {
     try {
       const raw = localStorage.getItem("profile") || localStorage.getItem("user");
@@ -444,7 +423,6 @@ function AdminAssignTask() {
       setLoading(false);
     }
   };
-
   const fetchTechnicians = async () => {
     try {
       const res = await tasksService.technicians();
@@ -453,7 +431,6 @@ function AdminAssignTask() {
       console.error(err);
     }
   };
-
   useEffect(() => {
     fetchReports();
     fetchTechnicians();
@@ -510,13 +487,11 @@ function AdminAssignTask() {
         rating: basic.rating,
         service_area: basic.service_area,
       };
-      if (typeof tasksService.technicianProfile === "function") {
-        try {
-          const res = await tasksService.technicianProfile(techId);
-          if (res?.success && res.data) merged = { ...merged, ...res.data };
-        } catch (e) {
-          console.warn("technicianProfile() failed", e);
-        }
+      try {
+        const res = await tasksService.technicianProfile(techId);
+        if (res?.success && res.data) merged = { ...merged, ...res.data };
+      } catch (e) {
+        console.warn("technicianProfile() failed", e);
       }
       setTechProfile(merged);
     } finally {
@@ -524,7 +499,6 @@ function AdminAssignTask() {
     }
   };
 
-  // ✅ คลิกที่แถว: ถ้าเคสยังไม่มอบ → เปิดมอบหมาย, ถ้ามอบแล้ว → เปิดความคืบหน้า
   const handleRowClick = (report) => {
     if (report.assigned_count > 0) {
       setProgressReport(report);
@@ -535,7 +509,6 @@ function AdminAssignTask() {
     }
   };
 
-  // สร้าง Report ใหม่แล้วเด้งไปหน้ามอบหมายเหมือนเดิม
   const loadOrgs = async () => {
     try {
       const res = await tasksService.workOrgs();
@@ -606,7 +579,6 @@ function AdminAssignTask() {
         };
         setShowCreateReport(false);
         setNewRp({ date_rp: "", org_id: "", building_id: "", lift_id: "", detail: "" });
-        // เปิด popup มอบหมายทันที
         setSelectedReport(r);
         setShowAssign(true);
       } else {
@@ -638,7 +610,7 @@ function AdminAssignTask() {
       <Card className="shadow-lg border">
         <CardHeader>
           <CardTitle>รายการแจ้งซ่อมที่รอดำเนินการ</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">คลิกที่แถวเพื่อ {`"`}มอบหมาย{`"`} หรือ {`"`}ดูความคืบหน้า{`"`} ตามสถานะ</p>
+          <p className="text-sm text-muted-foreground mt-1">คลิกที่แถวเพื่อ “มอบหมาย” หรือ “ดูความคืบหน้า” ตามสถานะ</p>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -667,7 +639,12 @@ function AdminAssignTask() {
                       onClick={() => handleRowClick(r)}
                       role="button"
                       tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleRowClick(r); } }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleRowClick(r);
+                        }
+                      }}
                     >
                       <TableCell>{r.date_rp}</TableCell>
                       <TableCell className="max-w-[360px] truncate">{r.detail}</TableCell>
@@ -757,11 +734,16 @@ function AdminAssignTask() {
                         <div className="flex flex-col items-center gap-2 text-center">
                           <Avatar className="h-20 w-20">
                             <AvatarImage src={techProfile.avatar_url || ""} alt="avatar" />
-                            <AvatarFallback>{(techProfile.first_name?.[0] || "?") + (techProfile.last_name?.[0] || "")}</AvatarFallback>
+                            <AvatarFallback>
+                              {(techProfile.first_name?.[0] || "?") + (techProfile.last_name?.[0] || "")}
+                            </AvatarFallback>
                           </Avatar>
                           <div>
                             <div className="text-lg font-semibold">{techProfile.first_name} {techProfile.last_name}</div>
-                            <div className="text-sm text-muted-foreground">@{techProfile.username || "—"}{techProfile.role ? (<span className="ml-2 text-xs font-medium text-muted-foreground">• {techProfile.role}</span>) : null}</div>
+                            <div className="text-sm text-muted-foreground">
+                              @{techProfile.username || "—"}
+                              {techProfile.role ? (<span className="ml-2 text-xs font-medium text-muted-foreground">• {techProfile.role}</span>) : null}
+                            </div>
                           </div>
                           <div className="mt-1">
                             <div className="text-xs text-muted-foreground">ภาระงานปัจจุบัน</div>
@@ -814,7 +796,9 @@ function AdminAssignTask() {
                     {selectedReport?.assigned_count > 0 ? (
                       <>
                         <Badge className="bg-emerald-100 text-emerald-700">มอบหมายแล้ว</Badge>
-                        <span className="text-muted-foreground">{selectedReport?.assigned_tech_name || selectedReport?.technician_name || selectedReport?.assigned_to || "—"}</span>
+                        <span className="text-muted-foreground">
+                          {selectedReport?.assigned_tech_name || selectedReport?.technician_name || selectedReport?.assigned_to || "—"}
+                        </span>
                       </>
                     ) : (
                       <Badge className="bg-amber-100 text-amber-700">รอมอบหมาย</Badge>
@@ -831,7 +815,7 @@ function AdminAssignTask() {
         </DialogContent>
       </Dialog>
 
-      {/* (คง Dialog รายละเอียดเดิมไว้ เผื่ออนาคตใช้งานจากที่อื่น) */}
+      {/* (คง Dialog รายละเอียดเดิมไว้) */}
       <Dialog open={showDetail} onOpenChange={setShowDetail}>
         <DialogContent className="sm:max-w-[860px] p-0 overflow-hidden">
           <div className="p-5">
@@ -853,10 +837,12 @@ function AdminAssignTask() {
                   <div className="text-sm text-muted-foreground">ไม่มีข้อมูล</div>
                 )}
               </div>
-              <div className="rounded-2xl border bg-white p-5 shadowสม">
+              <div className="rounded-2xl border bg-white p-5 shadow-sm">
                 <div className="text-lg font-semibold mb-3">การทำงาน</div>
                 <div className="space-y-3 text-sm">
-                  <Button variant="secondary" onClick={() => { setProgressReport(detailReport); setProgressOpen(true); }}>ดูความคืบหน้า (Popup)</Button>
+                  <Button variant="secondary" onClick={() => { setProgressReport(detailReport); setProgressOpen(true); }}>
+                    ดูความคืบหน้า (Popup)
+                  </Button>
                 </div>
               </div>
             </div>
@@ -866,7 +852,12 @@ function AdminAssignTask() {
       </Dialog>
 
       {/* Popup ความคืบหน้า */}
-      <ProgressDialog open={progressOpen} onOpenChange={setProgressOpen} report={progressReport} buildFullUrl={buildFullUrl} />
+      <ProgressDialog
+        open={progressOpen}
+        onOpenChange={setProgressOpen}
+        report={progressReport}
+        buildFullUrl={buildFullUrl}
+      />
 
       {/* Dialog สร้างงานใหม่ */}
       <Dialog open={showCreateReport} onOpenChange={setShowCreateReport}>
@@ -898,11 +889,7 @@ function AdminAssignTask() {
 
 function CreateReportForm({ orgs, buildings, lifts, newRp, setNewRp, loadOrgs }) {
   useEffect(() => { loadOrgs(); setNewRp((s) => ({ ...s, date_rp: s.date_rp || new Date().toISOString().slice(0,10) })); }, []);
-
-  useEffect(() => {
-    setNewRp((s) => ({ ...s, building_id: "", lift_id: "" }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newRp.org_id]);
+  useEffect(() => { setNewRp((s) => ({ ...s, building_id: "", lift_id: "" })); /* eslint-disable-next-line */ }, [newRp.org_id]);
   useEffect(() => { setNewRp((s) => ({ ...s, lift_id: "" })); }, [newRp.building_id]);
 
   return (
@@ -921,7 +908,7 @@ function CreateReportForm({ orgs, buildings, lifts, newRp, setNewRp, loadOrgs })
         </Select>
       </div>
       <div>
-        <label className="block text_sm font-medium mb-1">อาคาร</label>
+        <label className="block text-sm font-medium mb-1">อาคาร</label>
         <Select value={newRp.building_id?.toString() || ""} onValueChange={(v) => setNewRp({ ...newRp, building_id: v })} disabled={!newRp.org_id}>
           <SelectTrigger className="h-10"><SelectValue placeholder="เลือกอาคาร" /></SelectTrigger>
           <SelectContent>
@@ -942,7 +929,7 @@ function CreateReportForm({ orgs, buildings, lifts, newRp, setNewRp, loadOrgs })
       </div>
       <div className="sm:col-span-2">
         <label className="block text-sm font-medium mb-1">รายละเอียด</label>
-        <Textarea value={newRp.detail} onChange={(e) => setNewRp({ ...newRp, detail: e.target.value })} placeholder="เช่น ประตูไม่สนิท ชำรุดที่ชั้น 7 / มีเสียงดังตอนเปิด-ปิด" className="min-h[96px]" />
+        <Textarea value={newRp.detail} onChange={(e) => setNewRp({ ...newRp, detail: e.target.value })} placeholder="เช่น ประตูไม่สนิท ชำรุดที่ชั้น 7 / มีเสียงดังตอนเปิด-ปิด" className="min-h-[96px]" />
       </div>
     </div>
   );

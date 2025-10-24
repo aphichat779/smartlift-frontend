@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Settings, LogOut, ChevronLeft, ChevronRight, Shield, Users,
-  Building, ChevronDown, Square, SquareCheckBig, Monitor, ClipboardList,
+  ChevronDown, Square, SquareCheckBig, Monitor, ClipboardList,
   UserCog, Crown, Factory, X,
 } from "lucide-react";
 import { FaTools } from "react-icons/fa";
@@ -19,14 +19,19 @@ export default function Sidebar({
   isCollapsed,
   setIsCollapsed,
   mobileOpen = false,
-  setMobileOpen = () => { },
+  setMobileOpen = () => {},
 }) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // กางเมื่อเป็นมือถือ หรือ ไม่ย่อ หรือกำลังโฮเวอร์
+  const showExpanded = isMobile || !isCollapsed || isHovering;
+  const showLabels = showExpanded;
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -129,23 +134,24 @@ export default function Sidebar({
     }
   })();
 
+  // ---- เมนูหลัก (ทำช่องไฟไดนามิก) ----
   const MenuItem = ({ path, icon: Icon, label, exact = false }) => {
     const active = isActivePath(location.pathname, path, { exact });
+    const base = "w-full flex items-center rounded-lg transition-all duration-200 text-left";
+    const pad = showLabels ? "gap-3 px-4 py-2.5" : "justify-center h-10";
+    const state = active ? "bg-blue-100 text-blue-700" : "text-gray-700 hover:bg-gray-100";
     return (
       <button
         onClick={() => handleNavigate(path)}
-        className={[
-          "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-left",
-          active ? "bg-blue-100 text-blue-700" : "text-gray-700 hover:bg-gray-100",
-          isCollapsed && !isMobile ? "justify-center px-2" : "",
-        ].join(" ")}
+        className={[base, pad, state].join(" ")}
         role="menuitem"
       >
         <Icon size={20} className="flex-shrink-0" />
-        <span className={[
-          "text-sm font-medium transition-all duration-300",
-          isCollapsed && !isMobile ? "opacity-0 w-0" : "opacity-100 w-auto",
-        ].join(" ")}
+        <span
+          className={[
+            "text-sm font-medium transition-all duration-200",
+            showLabels ? "opacity-100 w-auto" : "opacity-0 w-0"
+          ].join(" ")}
         >
           {label}
         </span>
@@ -168,13 +174,13 @@ export default function Sidebar({
       <button
         key={item.id}
         onClick={() => handleNavigate(item.path)}
-        className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors ${bgHover}`}
+        className={`w-full flex items-center ${showLabels ? "gap-2 px-3 py-2" : "justify-center h-10"} text-sm rounded-md transition-colors ${bgHover}`}
         role="menuitem"
       >
         <item.icon size={16} className={colorClass} />
-        <span className={colorClass}>{item.label}</span>
+        {showLabels && <span className={colorClass}>{item.label}</span>}
 
-        {item.id === "2fa-setup" && (
+        {showLabels && item.id === "2fa-setup" && (
           <span className={`ml-auto flex items-center gap-1 ${colorClass}`}>
             {is2FAEnabled ? (
               <>
@@ -196,28 +202,32 @@ export default function Sidebar({
   const SidebarBody = (
     <>
       {/* Header */}
-      <div className="p-4 flex items-center justify-between border-b border-gray-200">
+      <div className={`${showLabels ? "p-4" : "p-2"} flex items-center justify-between border-b border-gray-200`}>
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 ${roleColor} rounded-lg flex items-center justify-center`}>
             <img
-              src="/11.avif" 
+              src="/11.avif"
               alt="SmartLift Logo"
-              className="w-full h-full object-contain rounded-lg" 
+              className="w-full h-full object-contain rounded-lg"
             />
           </div>
-          {(!isCollapsed || isMobile) && <span className="font-semibold  text-lg">SmartLift</span>}
+          {showLabels && <span className="font-semibold text-lg">SmartLift</span>}
         </div>
 
-        {!isMobile ? (
+        {!isMobile && (
           <button
             onClick={toggleSidebarDesktop}
             className="p-1 rounded-md hover:bg-gray-100 transition-colors"
             aria-label="Toggle sidebar"
             aria-expanded={!isCollapsed}
           >
-            {isCollapsed ? <ChevronRight size={16} className="text-gray-700" /> : <ChevronLeft size={16} className="text-gray-700" />}
+            {(!isCollapsed)
+              ? <ChevronLeft size={16} className="text-gray-700" />
+              : <ChevronRight size={16} className="text-gray-700" />}
           </button>
-        ) : (
+        )}
+
+        {isMobile && (
           <button
             onClick={() => setMobileOpen(false)}
             className="p-1 rounded-md hover:bg-gray-100 transition-colors"
@@ -229,7 +239,15 @@ export default function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2 overflow-auto" role="menu" aria-label="Primary">
+      <nav
+        className={[
+          showLabels ? "p-4" : "p-2",
+          showLabels ? "space-y-2" : "space-y-1",
+          "flex-1 overflow-auto"
+        ].join(" ")}
+        role="menu"
+        aria-label="Primary"
+      >
         {menuItems.map((item) => (
           <MenuItem
             key={item.id}
@@ -242,13 +260,16 @@ export default function Sidebar({
       </nav>
 
       {/* User section */}
-      <div className="p-2 border-t border-gray-200 space-y-2">
+      <div className={`${showLabels ? "p-2" : "p-2"} border-t border-gray-200 space-y-2`}>
         {user && (
           <div>
             <button
-              className="w-full p-2 hover:bg-gray-100 transition-colors rounded-lg flex items-center gap-2"
-              onClick={() => setIsUserMenuOpen((v) => !v)}
-              aria-expanded={isUserMenuOpen}
+              className={[
+                "w-full hover:bg-gray-100 transition-colors rounded-lg flex items-center",
+                showLabels ? "gap-2 p-2" : "justify-center h-10"
+              ].join(" ")}
+              onClick={() => showLabels && setIsUserMenuOpen((v) => !v)}
+              aria-expanded={isUserMenuOpen && showLabels}
               aria-controls="sidebar-user-menu"
             >
               {user.user_img ? (
@@ -262,42 +283,51 @@ export default function Sidebar({
                   <RoleIcon className="w-4 h-4 text-white" />
                 </div>
               )}
-              <div className="min-w-0 flex-1 text-left">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.first_name} {user.last_name}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {user.email || user.username}
-                </p>
-              </div>
-              <ChevronDown
-                size={16}
-                className={`text-gray-500 transition-transform duration-200 ${isUserMenuOpen ? "rotate-180" : ""}`}
-              />
+
+              {/* ชื่อ/อีเมล แสดงเฉพาะตอนกาง */}
+              {showLabels && (
+                <>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {user.first_name} {user.last_name}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {user.email || user.username}
+                    </p>
+                  </div>
+                  <ChevronDown
+                    size={16}
+                    className={`text-gray-500 transition-transform duration-200 ${isUserMenuOpen ? "rotate-180" : ""}`}
+                  />
+                </>
+              )}
             </button>
 
-            <div
-              id="sidebar-user-menu"
-              className={[
-                "mt-2 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden",
-                "transition-all duration-300 ease-in-out",
-                isUserMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0 pointer-events-none",
-              ].join(" ")}
-            >
-              <div className="p-2 space-y-1">
-                {userMenuItems.map((it) => (
-                  <UserMenuItem key={it.id} item={it} />
-                ))}
+            {/* เมนูย่อย แสดงเฉพาะตอนกาง */}
+            {showLabels && (
+              <div
+                id="sidebar-user-menu"
+                className={[
+                  "mt-2 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden",
+                  "transition-all duration-300 ease-in-out",
+                  isUserMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0 pointer-events-none",
+                ].join(" ")}
+              >
+                <div className="p-2 space-y-1">
+                  {userMenuItems.map((it) => (
+                    <UserMenuItem key={it.id} item={it} />
+                  ))}
 
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-red-100 hover:text-red-600 rounded-md transition-colors"
-                >
-                  <LogOut size={16} />
-                  <span>Log out</span>
-                </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-red-100 hover:text-red-600 rounded-md transition-colors"
+                  >
+                    <LogOut size={16} />
+                    <span>Log out</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
@@ -308,12 +338,14 @@ export default function Sidebar({
     <>
       {/* Desktop sidebar */}
       <div
+        onMouseEnter={() => { if (!isMobile && isCollapsed) setIsHovering(true); }}
+        onMouseLeave={() => { if (!isMobile) setIsHovering(false); }}
         className={[
           "hidden md:flex bg-white text-gray-900 shadow-lg transition-all duration-300 ease-in-out",
           "flex-col h-screen fixed top-0 z-50 rounded-r-xl",
-          isCollapsed ? "w-16" : "w-64",
+          showExpanded ? "w-64" : "w-16",
         ].join(" ")}
-        style={{ width: isCollapsed ? DESKTOP_COLLAPSED_W : DESKTOP_EXPANDED_W }}
+        style={{ width: showExpanded ? DESKTOP_EXPANDED_W : DESKTOP_COLLAPSED_W }}
         aria-hidden={false}
       >
         {SidebarBody}

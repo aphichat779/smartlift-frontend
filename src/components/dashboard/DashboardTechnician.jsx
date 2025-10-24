@@ -258,17 +258,14 @@ function TaskRow({ t }) {
       </TableCell>
       <TableCell className="align-top min-w-[260px] w-[40%] max-w-[520px]">
         <div className="text-sm text-slate-700 whitespace-normal break-words line-clamp-2">
-          {t.status_detail || t.detail || "-"}
+        <Badge className={`${meta.badge} px-2 py-0.5 text-xs`}>{meta.label}</Badge>
         </div>
         <div className="mt-2">
           <Stepper status={t.status} />
         </div>
       </TableCell>
       <TableCell className="min-w-[180px] w-[220px]">
-        <Badge className={`${meta.badge} px-2 py-0.5 text-sm`}>{meta.label}</Badge>
-        <div className="mt-2">
-          <Progress value={meta.pct} />
-        </div>
+        {t.status_detail || t.detail || "-"}
       </TableCell>
       <TableCell className="min-w-[120px] w-[160px]">
         <div className="flex flex-wrap gap-1">
@@ -346,8 +343,8 @@ function TaskTable({ tasks, loading }) {
               <TableRow className="bg-slate-50 text-slate-600">
                 <TableHead className="w-12">#</TableHead>
                 <TableHead className="min-w-[140px] w-[160px]">ลิฟต์/อาคาร</TableHead>
-                <TableHead className="min-w-[260px] w-[40%]">รายละเอียด/สถานะ</TableHead>
-                <TableHead className="min-w-[180px] w-[220px]">สเต็ป/ความคืบหน้า</TableHead>
+                <TableHead className="min-w-[260px] w-[40%]">สเต็ปความคืบหน้า</TableHead>
+                <TableHead className="min-w-[180px] w-[220px]">รายละเอียด</TableHead>
                 <TableHead className="min-w-[120px] w-[160px]">เครื่องมือ</TableHead>
                 <TableHead className="w-[84px] text-right">ดำเนินการ</TableHead>
               </TableRow>
