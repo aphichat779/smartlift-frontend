@@ -48,7 +48,7 @@ const successIconVariants = {
 };
 
 // --- 4) MotionButton สำหรับ shadcn/ui Button ---
-const MotionButton = motion(Button);
+const MotionButton = motion.create(Button);
 
 const RegisterForm = ({ onSwitchToLogin }) => {
   const { register } = useAuth();

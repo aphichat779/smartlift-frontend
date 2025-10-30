@@ -77,7 +77,11 @@ function AnimatedModal({ children, open, onOpenChange }) {
     <AnimatePresence>
       {open && (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <DialogOverlay className="bg-black/40 backdrop-blur-sm" />
           </motion.div>
           <motion.div
@@ -96,7 +100,7 @@ function AnimatedModal({ children, open, onOpenChange }) {
 }
 
 /* ------------------------------------------
-   Organization form & cards (address แทน description)
+   Organization form & cards
 ------------------------------------------ */
 
 const OrganizationForm = ({ org, onSuccess, onCancel }) => {
@@ -120,7 +124,9 @@ const OrganizationForm = ({ org, onSuccess, onCancel }) => {
         : await apiService.createOrganization(payload);
 
       if (response.success) {
-        toast.success(formData.id ? "แก้ไของค์กรสำเร็จ!" : "เพิ่มองค์กรใหม่สำเร็จ!");
+        toast.success(
+          formData.id ? "แก้ไของค์กรสำเร็จ!" : "เพิ่มองค์กรใหม่สำเร็จ!"
+        );
         onSuccess();
       } else {
         toast.error(response.message || "เกิดข้อผิดพลาด");
@@ -141,7 +147,9 @@ const OrganizationForm = ({ org, onSuccess, onCancel }) => {
         <Input
           name="org_name"
           value={formData.org_name}
-          onChange={(e) => setFormData({ ...formData, org_name: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, org_name: e.target.value })
+          }
           required
           disabled={isSubmitting}
           placeholder="กรุณาใส่ชื่อองค์กร"
@@ -162,7 +170,12 @@ const OrganizationForm = ({ org, onSuccess, onCancel }) => {
         />
       </div>
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
           ยกเลิก
         </Button>
         <Button
@@ -217,7 +230,7 @@ const OrganizationCard = ({ org, onEdit, onDelete }) => (
 );
 
 /* ------------------------------------------
-   Building form & cards (ลบ description/address)
+   Building form & cards
 ------------------------------------------ */
 
 const BuildingForm = ({ building, onSuccess, onCancel, organizations }) => {
@@ -245,7 +258,9 @@ const BuildingForm = ({ building, onSuccess, onCancel, organizations }) => {
         : await apiService.createBuilding(submitData);
 
       if (response.success) {
-        toast.success(formData.id ? "แก้ไขข้อมูลอาคารสำเร็จ" : "เพิ่มอาคารใหม่สำเร็จ");
+        toast.success(
+          formData.id ? "แก้ไขข้อมูลอาคารสำเร็จ" : "เพิ่มอาคารใหม่สำเร็จ"
+        );
         onSuccess();
       } else {
         toast.error(response.message || "เกิดข้อผิดพลาด");
@@ -298,7 +313,12 @@ const BuildingForm = ({ building, onSuccess, onCancel, organizations }) => {
         />
       </div>
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
           ยกเลิก
         </Button>
         <Button
@@ -326,7 +346,9 @@ const BuildingCard = ({ building, onEdit, onDelete }) => (
     <div className="flex items-start justify-between gap-4">
       <div className="flex-1">
         <h3 className="font-bold text-slate-800">{building.building_name}</h3>
-        <p className="text-sm text-slate-600 mt-1">{building.org_name || "-"}</p>
+        <p className="text-sm text-slate-600 mt-1">
+          {building.org_name || "-"}
+        </p>
       </div>
       <div className="flex flex-col sm:flex-row gap-2">
         <Button
@@ -375,21 +397,24 @@ const PageSkeleton = () => (
 ------------------------------------------ */
 
 const OrgAndBuildings = () => {
-  // --- ผูกแท็บกับ URL ---
+  // --- sync tab with URL ---
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") === "buildings" ? "buildings" : "organizations";
+  const initialTab =
+    searchParams.get("tab") === "buildings" ? "buildings" : "organizations";
   const [tab, setTab] = useState(initialTab);
 
-  // sync เมื่อ URL เปลี่ยนจากการกด back/forward
   useEffect(() => {
-    const t = searchParams.get("tab") === "buildings" ? "buildings" : "organizations";
+    const t =
+      searchParams.get("tab") === "buildings"
+        ? "buildings"
+        : "organizations";
     setTab(t);
   }, [searchParams]);
 
   const handleTabChange = (value) => {
     setTab(value);
     if (value === "organizations") {
-      setSearchParams({}); // ล้างให้เป็นค่าเริ่มต้น URL สวยๆ
+      setSearchParams({});
     } else {
       setSearchParams({ tab: value });
     }
@@ -413,6 +438,9 @@ const OrgAndBuildings = () => {
     id: null,
     name: "",
   });
+
+  // *** added: deleteError state สำหรับโชว์ error จาก backend ตอนลบไม่ได้
+  const [deleteError, setDeleteError] = useState("");
 
   const [filterOrgId, setFilterOrgId] = useState("all");
   const [isMobile, setIsMobile] = useState(
@@ -461,7 +489,9 @@ const OrgAndBuildings = () => {
 
   useEffect(() => {
     const onResize = () =>
-      setIsMobile(typeof window !== "undefined" ? window.innerWidth < 768 : false);
+      setIsMobile(
+        typeof window !== "undefined" ? window.innerWidth < 768 : false
+      );
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -473,23 +503,40 @@ const OrgAndBuildings = () => {
         const res = await apiService.deleteOrganization(id);
         if (res.success) {
           toast.success(`ลบองค์กร "${name}" สำเร็จ`);
-          setFilterOrgId((prev) => (prev !== "all" && parseInt(prev) === id ? "all" : prev));
+          setDeleteError("");
+          setFilterOrgId((prev) =>
+            prev !== "all" && parseInt(prev) === id ? "all" : prev
+          );
+          await fetchAll();
+          setConfirmDelete({ open: false, type: null, id: null, name: "" });
         } else {
-          toast.error(res.message || "ไม่สามารถลบองค์กรได้");
+          // *** changed: เก็บ error message เพื่อแสดงใน dialog
+          const msg =
+            res.message ||
+            "ไม่สามารถลบองค์กรได้ (อาจมีอาคารที่ยังผูกอยู่)";
+          setDeleteError(msg);
+          toast.error(msg);
         }
       } else if (type === "building") {
         const res = await apiService.deleteBuilding(id);
         if (res.success) {
           toast.success(`ลบอาคาร "${name}" สำเร็จ`);
+          setDeleteError("");
+          await fetchAll();
+          setConfirmDelete({ open: false, type: null, id: null, name: "" });
         } else {
-          toast.error(res.message || "ไม่สามารถลบอาคารได้");
+          const msg = res.message || "ไม่สามารถลบอาคารได้";
+          setDeleteError(msg);
+          toast.error(msg);
         }
       }
-      await fetchAll();
     } catch (err) {
-      toast.error(err.message || "เกิดข้อผิดพลาด");
-    } finally {
-      setConfirmDelete({ open: false, type: null, id: null, name: "" });
+      // *** changed: จัดการกรณี throw เช่น 400 จาก backend
+      const msg =
+        err.message ||
+        "ไม่สามารถลบได้: มีข้อมูลที่เกี่ยวข้องอยู่ในระบบ";
+      setDeleteError(msg);
+      toast.error(msg);
     }
   };
 
@@ -533,10 +580,16 @@ const OrgAndBuildings = () => {
         <div className="max-w-6xl mx-auto space-y-6">
           <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="bg-white/70 backdrop-blur rounded-xl p-1 shadow ring-1 ring-slate-200/70">
-              <TabsTrigger value="organizations" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-lg">
+              <TabsTrigger
+                value="organizations"
+                className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-lg"
+              >
                 องค์กร
               </TabsTrigger>
-              <TabsTrigger value="buildings" className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-lg">
+              <TabsTrigger
+                value="buildings"
+                className="data-[state=active]:bg-slate-900 data-[state=active]:text-white rounded-lg"
+              >
                 อาคาร
               </TabsTrigger>
             </TabsList>
@@ -595,12 +648,17 @@ const OrgAndBuildings = () => {
                         <TableHead className="w-[50px]">No</TableHead>
                         <TableHead>ชื่อองค์กร</TableHead>
                         <TableHead>ที่อยู่</TableHead>
-                        <TableHead className="text-center w-40">การจัดการ</TableHead>
+                        <TableHead className="text-center w-40">
+                          การจัดการ
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {organizations.map((org, index) => (
-                        <TableRow key={org.id} className="hover:bg-slate-50/80">
+                        <TableRow
+                          key={org.id}
+                          className="hover:bg-slate-50/80"
+                        >
                           <TableCell>{index + 1}</TableCell>
                           <TableCell className="font-medium text-slate-800">
                             {org.org_name}
@@ -665,7 +723,11 @@ const OrgAndBuildings = () => {
                   <Label htmlFor="org-filter" className="flex-shrink-0">
                     กรองตามองค์กร:
                   </Label>
-                  <Select id="org-filter" value={filterOrgId} onValueChange={setFilterOrgId}>
+                  <Select
+                    id="org-filter"
+                    value={filterOrgId}
+                    onValueChange={setFilterOrgId}
+                  >
                     <SelectTrigger className="w-full sm:w-[250px] bg-white/70">
                       <SelectValue placeholder="-- แสดงทั้งหมด --" />
                     </SelectTrigger>
@@ -710,12 +772,17 @@ const OrgAndBuildings = () => {
                         <TableHead className="w-[50px]">No</TableHead>
                         <TableHead>ชื่ออาคาร</TableHead>
                         <TableHead>องค์กร</TableHead>
-                        <TableHead className="text-center w-32">จัดการ</TableHead>
+                        <TableHead className="text-center w-32">
+                          จัดการ
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredBuildings.map((b, i) => (
-                        <TableRow key={b.id} className="hover:bg-slate-50/80">
+                        <TableRow
+                          key={b.id}
+                          className="hover:bg-slate-50/80"
+                        >
                           <TableCell>{i + 1}</TableCell>
                           <TableCell className="font-medium text-slate-800">
                             {b.building_name}
@@ -787,7 +854,9 @@ const OrgAndBuildings = () => {
               <DialogTitle className="text-xl font-bold text-slate-900">
                 {editingBuilding?.id ? "แก้ไขข้อมูลอาคาร" : "เพิ่มอาคารใหม่"}
               </DialogTitle>
-              <DialogDescription>กรอกข้อมูลอาคารให้ครบถ้วน</DialogDescription>
+              <DialogDescription>
+                กรอกข้อมูลอาคารให้ครบถ้วน
+              </DialogDescription>
             </DialogHeader>
             <BuildingForm
               building={editingBuilding}
@@ -801,28 +870,63 @@ const OrgAndBuildings = () => {
         {/* --- Delete Confirmation (shared) --- */}
         <AnimatedModal
           open={confirmDelete.open}
-          onOpenChange={(open) =>
-            !open && setConfirmDelete({ open: false, type: null, id: null, name: "" })
-          }
+          onOpenChange={(open) => {
+            if (!open) {
+              setConfirmDelete({
+                open: false,
+                type: null,
+                id: null,
+                name: "",
+              });
+              setDeleteError(""); // *** reset error เมื่อปิด modal
+            }
+          }}
         >
           <DialogContent className="bg-white rounded-2xl p-8 shadow-2xl max-w-sm w-full ring-1 ring-slate-200">
-            <DialogHeader className="flex flex-row items-center gap-2 text-rose-600">
-              <AlertTriangle className="w-5 h-5" />
-              <DialogTitle>ยืนยันการลบ</DialogTitle>
+            <DialogHeader className="flex flex-col gap-2 text-rose-600">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                <DialogTitle>ยืนยันการลบ</DialogTitle>
+              </div>
+
+              {/* *** added DialogDescription เพื่อปิด warning และช่วย a11y */}
+              <DialogDescription className="text-slate-600">
+                การลบเป็นการลบข้อมูลถาวรและไม่สามารถกู้คืนได้
+              </DialogDescription>
             </DialogHeader>
-            <p className="py-4 text-center text-slate-600">
+
+            {/* เนื้อหาแจ้งชื่อรายการที่จะลบ */}
+            <p className="py-4 text-center text-slate-700">
               คุณแน่ใจหรือไม่ว่าต้องการลบ{" "}
               <strong className="text-rose-700">
-                {confirmDelete.type === "org" ? "องค์กร" : "อาคาร"} {confirmDelete.name}
+                {confirmDelete.type === "org" ? "องค์กร" : "อาคาร"}{" "}
+                {confirmDelete.name}
               </strong>
               ?
             </p>
+
+            {/* ถ้า backend บล็อกการลบ แสดงสาเหตุชัดเจน */}
+            {deleteError && (
+              <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {deleteError ===
+                "Cannot delete organization. It has associated buildings."
+                  ? "ไม่สามารถลบองค์กรได้ เนื่องจากยังมีอาคารที่สังกัดองค์กรนี้อยู่ กรุณาลบหรือย้ายอาคารออกก่อน"
+                  : deleteError}
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 mt-2">
               <Button
                 variant="ghost"
-                onClick={() =>
-                  setConfirmDelete({ open: false, type: null, id: null, name: "" })
-                }
+                onClick={() => {
+                  setConfirmDelete({
+                    open: false,
+                    type: null,
+                    id: null,
+                    name: "",
+                  });
+                  setDeleteError("");
+                }}
               >
                 ยกเลิก
               </Button>
